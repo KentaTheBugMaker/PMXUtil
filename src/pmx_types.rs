@@ -102,10 +102,12 @@ pub mod pmx_types {
     }
 
     /*Represent Triangle*/
+    #[derive(Copy, Clone)]
     pub struct PMXFace {
         pub vertices: [u32; 3]
     }
 
+    #[derive(Clone)]
     pub struct PMXFaces {
         pub faces: Vec<PMXFace>
     }
