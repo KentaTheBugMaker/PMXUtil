@@ -24,11 +24,19 @@ use PMXUtil::pmx_loader::pmx_loader::PMXLoader;
 ```
 2. Create loader instance and read  
 ```rust
-let mut loader=PMXLoader::open("/path/to/pmxfile");
-let loader=PMXLoader::open("/path/to/pmxfile");
-let (model_info,next_stage)=loader.read_pmx_model_info();
-let (vertices,next_stage)=next_stage.read_pmx_vertices();
-
+let mut loader= PMXLoader::open("/path/to/pmxfile");
+let header = loader.get_header();
+println!("{:#?}", header);
+let (model_info, ns) = ModelInfoLoader::read_pmx_model_info(loader);
+print!("{:#?}", model_info);
+let (vertices, ns) = VerticesLoader::read_pmx_vertices(ns);
+print!("{}", vertices);
+let (faces, ns) = FacesLoader::read_pmx_faces(ns);
+println!("{}", faces);
+let (textures, ns) = TexturesLoader::read_texture_list(ns);
+println!("{}", textures);
+let (materials, ns) = MaterialsLoader::read_pmx_materials(ns);
+println!("{:#?}", materials);
 ```
 
 
