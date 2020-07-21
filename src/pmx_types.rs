@@ -71,10 +71,10 @@ pub mod pmx_types {
 
     #[derive(Debug)]
     pub struct PMXModelInfo {
-        pub  name: String,
-        pub  name_en: String,
-        pub  comment: String,
-        pub  comment_en: String,
+        pub name: String,
+        pub name_en: String,
+        pub comment: String,
+        pub comment_en: String,
     }
 
     #[derive(Debug)]
@@ -104,16 +104,16 @@ pub mod pmx_types {
     /*Represent Triangle*/
     #[derive(Copy, Clone)]
     pub struct PMXFace {
-        pub vertices: [u32; 3]
+        pub vertices: [u32; 3],
     }
 
     #[derive(Clone)]
     pub struct PMXFaces {
-        pub faces: Vec<PMXFace>
+        pub faces: Vec<PMXFace>,
     }
 
     pub struct PMXTextureList {
-        pub textures: Vec<String>
+        pub textures: Vec<String>,
     }
 
     pub enum PMXDrawModeFlags {
@@ -128,8 +128,7 @@ pub mod pmx_types {
     }
 
     #[derive(Debug)]
-    pub enum PMXSphereMode
-    {
+    pub enum PMXSphereMode {
         None = 0x00,
         Mul = 0x01,
         Add = 0x02,
@@ -137,36 +136,35 @@ pub mod pmx_types {
     }
 
     #[derive(Debug)]
-    pub enum PMXToonMode
-    {
+    pub enum PMXToonMode {
         Separate = 0x00,
         //< 0:個別Toon
-        Common = 0x01,        //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
+        Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
 
     #[derive(Debug)]
     pub struct PMXMaterial {
-        pub  name: String,
-        pub  english_name: String,
-        pub  diffuse: Vec4,
-        pub  specular: Vec3,
-        pub  specular_factor: f32,
-        pub  ambient: Vec3,
-        pub  drawmode: u8,
-        pub  edge_color: Vec4,
-        pub  edge_size: f32,
-        pub  texture_index: i32,
-        pub  sphere_mode_texture_index: i32,
-        pub  spheremode: PMXSphereMode,
-        pub  toon_mode: PMXToonMode,
-        pub  toon_texture_index: i32,
-        pub  memo: String,
-        pub  num_face_vertices: i32,
+        pub name: String,
+        pub english_name: String,
+        pub diffuse: Vec4,
+        pub specular: Vec3,
+        pub specular_factor: f32,
+        pub ambient: Vec3,
+        pub drawmode: u8,
+        pub edge_color: Vec4,
+        pub edge_size: f32,
+        pub texture_index: i32,
+        pub sphere_mode_texture_index: i32,
+        pub spheremode: PMXSphereMode,
+        pub toon_mode: PMXToonMode,
+        pub toon_texture_index: i32,
+        pub memo: String,
+        pub num_face_vertices: i32,
     }
 
     #[derive(Debug)]
     pub struct PMXMaterials {
-        pub  materials: Vec<PMXMaterial>
+        pub materials: Vec<PMXMaterial>,
     }
 
     pub(crate) enum ReaderStage {
@@ -238,8 +236,8 @@ pub mod pmx_types {
 
     #[derive(Debug)]
     pub struct VertexMorph {
-        pub(crate)  index: i32,
-        pub(crate)  offset: Vec3,
+        pub(crate) index: i32,
+        pub(crate) offset: Vec3,
     }
 
     #[derive(Debug)]
@@ -278,16 +276,16 @@ pub mod pmx_types {
 
     #[derive(Debug)]
     pub struct PMXMorphs {
-        pub(crate) morphs: Vec<PMXMorph>
+        pub(crate) morphs: Vec<PMXMorph>,
     }
 
     pub struct PMXVertices {
-        pub vertices: Vec<PMXVertex>
+        pub vertices: Vec<PMXVertex>,
     }
 
     #[derive(Debug)]
     pub struct PMXBones {
-        pub(crate) bones: Vec<PMXBone>
+        pub(crate) bones: Vec<PMXBone>,
     }
 
     impl Display for PMXVertices {
@@ -302,7 +300,11 @@ pub mod pmx_types {
 
     impl Display for PMXVertex {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-            writeln!(f, "Vertex:[position:{:?} norm:{:?} uv:{:?}]", self.position, self.norm, self.uv);
+            writeln!(
+                f,
+                "Vertex:[position:{:?} norm:{:?} uv:{:?}]",
+                self.position, self.norm, self.uv
+            );
             if [[0.0f32; 4]; 4] != self.add_uv {
                 for add_uv in &self.add_uv {
                     write!(f, "{:?}", add_uv);
@@ -310,19 +312,29 @@ pub mod pmx_types {
             }
             match self.weight_type {
                 PMXVertexWeight::BDEF1 => {
-                    writeln!(f,
-                             "BDEF1:[{}]", self.bone_indices[0]
-                    );
+                    writeln!(f, "BDEF1:[{}]", self.bone_indices[0]);
                 }
                 PMXVertexWeight::BDEF2 => {
-                    writeln!(f, "BDEF2:[index1:{} index2:{} weight1{}]", self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]);
+                    writeln!(
+                        f,
+                        "BDEF2:[index1:{} index2:{} weight1{}]",
+                        self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]
+                    );
                 }
                 PMXVertexWeight::BDEF4 => {
                     writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", self.bone_indices[0], self.bone_indices[1], self.bone_indices[2], self.bone_indices[3], self.bone_weights[0], self.bone_weights[1], self.bone_weights[2], self.bone_weights[3]);
                 }
                 PMXVertexWeight::SDEF => {
-                    writeln!(f, "SDEF:[index1:{} index2:{} weight1{}]", self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]);
-                    writeln!(f, "SDEF Specific Params:[ C:[{:?}] R0:[{:?}] R1:[{:?}] ]", self.sdef_c, self.sdef_r0, self.sdef_r1);
+                    writeln!(
+                        f,
+                        "SDEF:[index1:{} index2:{} weight1{}]",
+                        self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]
+                    );
+                    writeln!(
+                        f,
+                        "SDEF Specific Params:[ C:[{:?}] R0:[{:?}] R1:[{:?}] ]",
+                        self.sdef_c, self.sdef_r0, self.sdef_r1
+                    );
                 }
                 PMXVertexWeight::QDEF => {
                     writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", self.bone_indices[0], self.bone_indices[1], self.bone_indices[2], self.bone_indices[3], self.bone_weights[0], self.bone_weights[1], self.bone_weights[2], self.bone_weights[3]);
@@ -335,11 +347,14 @@ pub mod pmx_types {
 
     impl Display for PMXFace {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-            writeln!(f, "Triangle:[{},{},{}]", self.vertices[0], self.vertices[1], self.vertices[2]);
+            writeln!(
+                f,
+                "Triangle:[{},{},{}]",
+                self.vertices[0], self.vertices[1], self.vertices[2]
+            );
             Ok(())
         }
     }
-
 
     impl Display for PMXFaces {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -353,9 +368,9 @@ pub mod pmx_types {
 
     impl Display for PMXTextureList {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-            let _result=writeln!(f, "Textures:{}", self.textures.len());
+            let _result = writeln!(f, "Textures:{}", self.textures.len());
             for name in self.textures.iter() {
-                let _result=writeln!(f, "{}", name);
+                let _result = writeln!(f, "{}", name);
             }
             Ok(())
         }

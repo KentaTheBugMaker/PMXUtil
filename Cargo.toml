@@ -1,6 +1,6 @@
 [package]
 name = "PMXUtil"
-version = "0.1.2"
+version = "0.2.0"
 authors = ["t18b219k"]
 edition = "2018"
 repository = "https://github.com/t18b219k/PMXUtil"
@@ -12,5 +12,5 @@ description = "A simple pmx loader "
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-encoding = "0.2"
+encoding = "0.2.33"
 

@@ -23,12 +23,12 @@ extern crate PMXUtil;
 use PMXUtil::pmx_loader::pmx_loader::PMXLoader;
 ```
 2. Create loader instance and read  
-```
+```rust
 let mut loader=PMXLoader::open("/path/to/pmxfile");
-//get _header information
-let _header=loader.get_header();
-//get model information returns Result<PMXModelInfo,()>
-let _model_info=loader.read_pmx_model_info().unwrap();
+let loader=PMXLoader::open("/path/to/pmxfile");
+let (model_info,next_stage)=loader.read_pmx_model_info();
+let (vertices,next_stage)=next_stage.read_pmx_vertices();
+
 ```
 
 
