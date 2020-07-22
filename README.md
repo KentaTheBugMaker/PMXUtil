@@ -16,13 +16,13 @@
   2. Parse RigidBody Information
   3. Parse Joint
   4. Parse SoftBody
-### How to Use
-1. Import
-```
+## How to Use
+### 1. Import
+```rust
 extern crate PMXUtil;
 use PMXUtil::pmx_loader::pmx_loader::PMXLoader;
 ```
-2. Create loader instance and read  
+### 2. Create loader instance and read  
 ```rust
 let mut loader= PMXLoader::open("/path/to/pmxfile");
 let header = loader.get_header();
@@ -38,5 +38,18 @@ println!("{}", textures);
 let (materials, ns) = MaterialsLoader::read_pmx_materials(ns);
 println!("{:#?}", materials);
 ```
+### 3 Create Writer instance and write
+    this library always write text as UTF8 byte stream
 
+```rust
+        let mut writer =PMXWriter::begin_writer("/path/to/pmxfile");
+        writer.set_model_info(Some(&model_info.name),Some(&model_info.name_en),Some(&model_info.comment),Some(&model_info.comment_en));
+        writer.add_vertices(&vertices.vertices);
+        writer.add_faces(&faces.faces);
+        writer.add_textures(&textures.textures);
+        writer.add_materials(&materials.materials);
+        writer.add_bones(&bones.bones);
+        writer.add_morphs(&morphs.morphs);
+        PMXWriter::write(writer);
+```
 

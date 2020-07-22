@@ -69,7 +69,7 @@ pub mod pmx_types {
         Int,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Eq, PartialEq,Clone)]
     pub struct PMXModelInfo {
         pub name: String,
         pub name_en: String,
@@ -77,7 +77,7 @@ pub mod pmx_types {
         pub comment_en: String,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXVertexWeight {
         BDEF1 = 0x00,
         BDEF2 = 0x01,
@@ -86,7 +86,7 @@ pub mod pmx_types {
         QDEF = 0x04,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone, PartialEq)]
     pub struct PMXVertex {
         pub position: Vec3,
         pub norm: Vec3,
@@ -102,16 +102,16 @@ pub mod pmx_types {
     }
 
     /*Represent Triangle*/
-    #[derive(Copy, Clone)]
+    #[derive(Copy, Clone,Eq, PartialEq,Debug)]
     pub struct PMXFace {
         pub vertices: [u32; 3],
     }
 
-    #[derive(Clone)]
+    #[derive(Clone,Eq, PartialEq,Debug)]
     pub struct PMXFaces {
         pub faces: Vec<PMXFace>,
     }
-
+    #[derive(Debug,Eq,PartialEq)]
     pub struct PMXTextureList {
         pub textures: Vec<String>,
     }
@@ -127,7 +127,7 @@ pub mod pmx_types {
         DrawLine = 0x80,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Copy, Clone)]
     pub enum PMXSphereMode {
         None = 0x00,
         Mul = 0x01,
@@ -135,14 +135,14 @@ pub mod pmx_types {
         SubTexture = 0x03,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Copy, Clone)]
     pub enum PMXToonMode {
         Separate = 0x00,
         //< 0:個別Toon
         Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone)]
     pub struct PMXMaterial {
         pub name: String,
         pub english_name: String,
@@ -181,7 +181,7 @@ pub mod pmx_types {
         JointList,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone)]
     pub struct PMXBone {
         pub(crate) name: String,
         pub(crate) english_name: String,
@@ -203,7 +203,7 @@ pub mod pmx_types {
         pub(crate) ik_links: Vec<PMXIKLink>,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone)]
     pub struct PMXIKLink {
         pub(crate) ik_bone_index: i32,
         pub(crate) enable_limit: u8,
@@ -211,7 +211,7 @@ pub mod pmx_types {
         pub(crate) limit_max: Vec3,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone)]
     pub struct PMXMorph {
         pub(crate) name: String,
         pub(crate) english_name: String,
@@ -220,8 +220,8 @@ pub mod pmx_types {
         pub(crate) offset: i32,
         pub(crate) morph_data: Vec<MorphTypes>,
     }
-
-    #[derive(Debug)]
+    pub struct PMXRigidBody;
+    #[derive(Debug,Clone)]
     pub enum MorphTypes {
         Vertex(VertexMorph),
         UV(UVMorph),
@@ -234,32 +234,32 @@ pub mod pmx_types {
         Group(GroupMorph),
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone,Copy)]
     pub struct VertexMorph {
         pub(crate) index: i32,
         pub(crate) offset: Vec3,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone,Copy)]
     pub struct UVMorph {
         pub(crate) index: i32,
         pub(crate) offset: Vec4,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Copy, Clone)]
     pub struct GroupMorph {
         pub(crate) index: i32,
         pub(crate) morph_factor: f32,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Copy, Clone)]
     pub struct BoneMorph {
         pub(crate) index: i32,
         pub(crate) translates: Vec3,
         pub(crate) rotates: Vec4,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,Clone)]
     pub struct MaterialMorph {
         pub(crate) index: i32,
         pub(crate) formula: u8,
@@ -278,7 +278,7 @@ pub mod pmx_types {
     pub struct PMXMorphs {
         pub(crate) morphs: Vec<PMXMorph>,
     }
-
+#[derive(Debug, PartialEq)]
     pub struct PMXVertices {
         pub vertices: Vec<PMXVertex>,
     }
