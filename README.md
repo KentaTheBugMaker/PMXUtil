@@ -52,4 +52,5 @@ println!("{:#?}", materials);
         writer.add_morphs(&morphs.morphs);
         PMXWriter::write(writer);
 ```
-
+## Note 
+ this crate under construction so outputed pmx file is not valid format because they don't have rigidbody section and joint section 
