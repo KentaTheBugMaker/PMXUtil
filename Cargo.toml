@@ -6,6 +6,7 @@ edition = "2018"
 repository = "https://github.com/t18b219k/PMXUtil"
 keywords = ["mmd","pmx"]
 license-file = "LICENSE"
+license="MIT OR Apache-2.0"
 readme = "README.md"
 licese= "GPLV3"
 description = "A simple pmx loader "
