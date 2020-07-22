@@ -127,7 +127,7 @@ pub mod pmx_types {
         DrawLine = 0x80,
     }
 
-    #[derive(Debug,Copy, Clone)]
+    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXSphereMode {
         None = 0x00,
         Mul = 0x01,
@@ -135,14 +135,14 @@ pub mod pmx_types {
         SubTexture = 0x03,
     }
 
-    #[derive(Debug,Copy, Clone)]
+    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXToonMode {
         Separate = 0x00,
         //< 0:個別Toon
         Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
 
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone, PartialEq)]
     pub struct PMXMaterial {
         pub name: String,
         pub english_name: String,
@@ -162,7 +162,7 @@ pub mod pmx_types {
         pub num_face_vertices: i32,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug, PartialEq)]
     pub struct PMXMaterials {
         pub materials: Vec<PMXMaterial>,
     }
@@ -181,7 +181,7 @@ pub mod pmx_types {
         JointList,
     }
 
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,PartialEq)]
     pub struct PMXBone {
         pub(crate) name: String,
         pub(crate) english_name: String,
@@ -203,7 +203,7 @@ pub mod pmx_types {
         pub(crate) ik_links: Vec<PMXIKLink>,
     }
 
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,PartialEq)]
     pub struct PMXIKLink {
         pub(crate) ik_bone_index: i32,
         pub(crate) enable_limit: u8,
@@ -283,7 +283,7 @@ pub mod pmx_types {
         pub vertices: Vec<PMXVertex>,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,PartialEq)]
     pub struct PMXBones {
         pub(crate) bones: Vec<PMXBone>,
     }

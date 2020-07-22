@@ -22,8 +22,8 @@ pub mod pmx_types;
 mod test {
     use std::env;
 
-    use crate::pmx_loader::pmx_loader::*;
-    use crate::pmx_loader::{MaterialsLoader, TexturesLoader, BonesLoader, MorphsLoader};
+
+    use crate::pmx_loader::{MaterialsLoader, TexturesLoader, BonesLoader, MorphsLoader, PMXLoader, ModelInfoLoader, VerticesLoader, FacesLoader};
     use crate::pmx_writer::PMXWriter;
     use crate::pmx_types::pmx_types::PMXModelInfo;
 
@@ -73,9 +73,11 @@ mod test {
         let (vertices_cpy,ns)=VerticesLoader::read_pmx_vertices(ns);
         let (faces_cpy,ns)=FacesLoader::read_pmx_faces(ns);
         let(textures_cpy,ns)=TexturesLoader::read_texture_list(ns);
-        /*
+
         let (materials_cpy,ns)=MaterialsLoader::read_pmx_materials(ns);
+
         let(bones_cpy,ns)=BonesLoader::read_pmx_bones(ns);
+        /*
         let(morphs_cpy,ns)=MorphsLoader::read_pmx_morphs(ns);
         */
 
@@ -83,6 +85,7 @@ mod test {
         assert_eq!(vertices,vertices_cpy);
         assert_eq!(faces,faces_cpy);
         assert_eq!(textures,textures_cpy);
-
+        assert_eq!(materials,materials_cpy);
+        assert_eq!(bones,bones_cpy);
     }
 }

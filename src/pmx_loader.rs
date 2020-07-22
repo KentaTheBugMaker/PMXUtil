@@ -1,18 +1,12 @@
 use crate::binary_reader::BinaryReader;
-use crate::pmx_types::pmx_types::{
-    BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXBones, PMXHeaderRust, PMXIKLink,
-    PMXMaterial, PMXMaterials, PMXMorph, PMXMorphs, PMXSphereMode, PMXTextureList, PMXToonMode,
-    UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
-    BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
-    BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
-};
 
-pub mod pmx_loader {
-    use crate::binary_reader::BinaryReader;
-    use crate::pmx_loader::TexturesLoader;
     use crate::pmx_types::pmx_types::{
-        Encode, PMXFace, PMXFaces, PMXHeaderC, PMXHeaderRust, PMXModelInfo, PMXVertex,
-        PMXVertexWeight, PMXVertices,
+        Encode, PMXFace, PMXFaces, PMXHeaderC, PMXModelInfo, PMXVertex,
+        PMXVertexWeight, PMXVertices,    BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXBones, PMXHeaderRust, PMXIKLink,
+        PMXMaterial, PMXMaterials, PMXMorph, PMXMorphs, PMXSphereMode, PMXTextureList, PMXToonMode,
+        UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
+        BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
+        BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
     };
     use std::path::Path;
 
@@ -271,7 +265,7 @@ pub mod pmx_loader {
             (ctx, next_stage)
         }
     }
-}
+
 pub struct TexturesLoader {
     header: PMXHeaderRust,
     inner: BinaryReader,

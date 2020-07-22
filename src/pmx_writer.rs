@@ -98,22 +98,31 @@ impl PMXWriter{
         writer.write_text_buf(&model_info.comment);
         writer.write_text_buf(&model_info.comment_en);
         //wrote model info
-        // OK implementation is valid
-println!("Require_bytes={}",parameters[5]);
+
         writer.write_i32(data_set.vertices.len() as i32);
         for vertex in data_set.vertices{
             writer.write_pmx_vertex(data_set.additional_uvs.unwrap_or(0),vertex,parameters[5]);
         }
-        //Write actual vertices
+
         writer.write_i32(3*data_set.faces.len() as i32);
         for face in data_set.faces {
             writer.write_face(parameters[2],face)
         }
-        //OK implementation is valid
+
         writer.write_i32(data_set.textures.len() as i32);
         for name in data_set.textures{
             writer.write_text_buf(&name);
         }
+
+        writer.write_i32(data_set.materials.len() as i32);
+        for material in data_set.materials{
+            writer.write_pmx_material(parameters[3],material)
+        }
+
+        writer.write_i32(data_set.bones.len() as i32);
+            for bone in data_set.bones{
+                writer.write_bone(parameters[5],bone);
+            }
 
         writer.inner.flush();
     }
