@@ -107,10 +107,6 @@ pub mod pmx_types {
         pub vertices: [u32; 3],
     }
 
-    #[derive(Clone,Eq, PartialEq,Debug)]
-    pub struct PMXFaces {
-        pub faces: Vec<PMXFace>,
-    }
     #[derive(Debug,Eq,PartialEq)]
     pub struct PMXTextureList {
         pub textures: Vec<String>,
@@ -162,23 +158,17 @@ pub mod pmx_types {
         pub num_face_vertices: i32,
     }
 
-    #[derive(Debug, PartialEq)]
-    pub struct PMXMaterials {
-        pub materials: Vec<PMXMaterial>,
+    #[derive(Debug,Clone,PartialEq)]
+    pub struct PMXFrame{
+       pub name:String,
+       pub name_en:String,
+        pub(crate) is_special:u8,
+        pub(crate) inners:Vec<FrameInner>
     }
-
-    pub(crate) enum ReaderStage {
-        Header,
-        ModelInfo,
-        VertexList,
-        TextureList,
-        SurfaceList,
-        MaterialList,
-        BoneList,
-        MorphList,
-        FrameList,
-        RigidList,
-        JointList,
+    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
+   pub struct FrameInner{
+       pub target:u8,
+       pub index:i32
     }
 
     #[derive(Debug,Clone,PartialEq)]
@@ -274,29 +264,8 @@ pub mod pmx_types {
         pub(crate) toon_texture_factor: Vec4,
     }
 
-    #[derive(Debug,PartialEq)]
-    pub struct PMXMorphs {
-        pub(crate) morphs: Vec<PMXMorph>,
-    }
-#[derive(Debug, PartialEq)]
-    pub struct PMXVertices {
-        pub vertices: Vec<PMXVertex>,
-    }
 
-    #[derive(Debug,PartialEq)]
-    pub struct PMXBones {
-        pub(crate) bones: Vec<PMXBone>,
-    }
 
-    impl Display for PMXVertices {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-            write!(f, "Vertices:{}", self.vertices.len());
-            for vertex in self.vertices.iter() {
-                writeln!(f, "{}", vertex);
-            }
-            Ok(())
-        }
-    }
 
     impl Display for PMXVertex {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
@@ -356,15 +325,7 @@ pub mod pmx_types {
         }
     }
 
-    impl Display for PMXFaces {
-        fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-            writeln!(f, "Triangles:{}", self.faces.len());
-            for triangle in self.faces.iter() {
-                write!(f, "{}", triangle);
-            }
-            Ok(())
-        }
-    }
+
 
     impl Display for PMXTextureList {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {

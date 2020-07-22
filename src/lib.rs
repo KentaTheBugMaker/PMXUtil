@@ -23,31 +23,13 @@ mod test {
     use std::env;
 
 
-    use crate::pmx_loader::{MaterialsLoader, TexturesLoader, BonesLoader, MorphsLoader, PMXLoader, ModelInfoLoader, VerticesLoader, FacesLoader};
+    use crate::pmx_loader::{MaterialsLoader, TexturesLoader, BonesLoader, MorphsLoader, PMXLoader, ModelInfoLoader, VerticesLoader, FacesLoader, FrameLoader};
     use crate::pmx_writer::PMXWriter;
     use crate::pmx_types::pmx_types::PMXModelInfo;
 
-    #[test]
-    fn loader_test() {
-
-        let filename = "./from.pmx";
-        let mut loader = PMXLoader::open(filename);
-        let header = loader.get_header();
-        println!("{:#?}", header);
-        let (model_info, ns) = ModelInfoLoader::read_pmx_model_info(loader);
-        print!("{:#?}", model_info);
-        let (vertices, ns) = VerticesLoader::read_pmx_vertices(ns);
-        print!("{}", vertices);
-        let (faces, ns) = FacesLoader::read_pmx_faces(ns);
-        println!("{}", faces);
-        let (textures, ns) = TexturesLoader::read_texture_list(ns);
-        println!("{}", textures);
-        let (materials, ns) = MaterialsLoader::read_pmx_materials(ns);
-        println!("{:#?}", materials);
-    }
     //Perform Copy test
     #[test]
-    fn writer_test(){
+    fn copy_test(){
         let from ="./from.pmx";
         let to ="./to.pmx";
         let mut writer =PMXWriter::begin_writer(to);
@@ -59,14 +41,17 @@ mod test {
         let (materials,ns)=MaterialsLoader::read_pmx_materials(ns);
         let(bones,ns)=BonesLoader::read_pmx_bones(ns);
         let(morphs,ns)=MorphsLoader::read_pmx_morphs(ns);
-
+        let (frames,ns)=FrameLoader::read_frames(ns);
+        for frame in frames{
+            println!("{:#?}",frame)
+        }
         writer.set_model_info(Some(&model_info.name),Some(&model_info.name_en),Some(&model_info.comment),Some(&model_info.comment_en));
-        writer.add_vertices(&vertices.vertices);
-        writer.add_faces(&faces.faces);
+        writer.add_vertices(&vertices);
+        writer.add_faces(&faces);
         writer.add_textures(&textures.textures);
-        writer.add_materials(&materials.materials);
-        writer.add_bones(&bones.bones);
-        writer.add_morphs(&morphs.morphs);
+        writer.add_materials(&materials);
+        writer.add_bones(&bones);
+        writer.add_morphs(&morphs);
         PMXWriter::write(writer);
 
         let reader=PMXLoader::open(to);

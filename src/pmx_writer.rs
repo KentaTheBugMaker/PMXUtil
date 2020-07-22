@@ -1,4 +1,4 @@
-use crate::pmx_types::pmx_types::{PMXModelInfo, PMXVertex, PMXFace, PMXTextureList, PMXMaterial, PMXMorph, PMXBone, PMXRigidBody};
+use crate::pmx_types::pmx_types::{PMXModelInfo, PMXVertex, PMXFace, PMXTextureList, PMXMaterial, PMXMorph, PMXBone, PMXRigidBody, PMXFrame};
 use crate::binary_writer::binary_writer::BinaryWriter;
 use std::path::Path;
 use std::io::Write;
@@ -11,8 +11,9 @@ pub struct PMXWriter{
     faces:Vec<PMXFace>,
     textures:Vec<String>,
     materials:Vec<PMXMaterial>,
-    morphs:Vec<PMXMorph>,
     bones:Vec<PMXBone>,
+    morphs:Vec<PMXMorph>,
+    frames:Vec<PMXFrame>,
     rigid_bodies:Vec<PMXRigidBody>
 }
 impl PMXWriter{
@@ -30,7 +31,8 @@ impl PMXWriter{
             materials: vec![],
             morphs: vec![],
             bones: vec![],
-            rigid_bodies: vec![]
+            rigid_bodies: vec![],
+            frames: vec![]
         }
     }
     pub fn set_model_info(&mut self,model_name: Option<&str>, model_name_en: Option<&str>, comment: Option<&str>, comment_en: Option<&str>){
@@ -49,24 +51,21 @@ impl PMXWriter{
             Ok(())
         }
     }
-    pub fn add_vertices(&mut self,vertices:&[PMXVertex]){
-        self.vertices.extend_from_slice(&vertices);
-    }
+    pub fn add_vertices(&mut self,vertices:&[PMXVertex]){ self.vertices.extend_from_slice(&vertices); }
     pub fn add_faces(&mut self,faces:&[PMXFace]){
         self.faces.extend_from_slice(&faces);
     }
     pub fn add_textures(&mut self,textures:&[String]){
         self.textures.extend_from_slice(textures);
     }
-    pub fn add_materials(&mut self,materials:&[PMXMaterial]){
-        self.materials.extend_from_slice(materials);
-    }
+    pub fn add_materials(&mut self,materials:&[PMXMaterial]){ self.materials.extend_from_slice(materials); }
     pub fn add_morphs(&mut self,morphs:&[PMXMorph]){
         self.morphs.extend_from_slice(morphs)
     }
     pub fn add_bones(&mut self,bones:&[PMXBone]){
         self.bones.extend_from_slice(bones)
     }
+    pub fn add_frames(&mut self,frames:&[PMXFrame]){self.frames.extend_from_slice(frames)}
     /// Actually write data because index size optimization
     /// and drop all
     pub fn write(data_set:Self){
