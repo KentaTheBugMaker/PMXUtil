@@ -123,7 +123,10 @@ impl PMXWriter{
             for bone in data_set.bones{
                 writer.write_bone(parameters[5],bone);
             }
-
+        writer.write_i32(data_set.morphs.len() as i32);
+        for morph in data_set.morphs{
+            writer.write_pmx_morph(parameters[2],parameters[5],parameters[4],parameters[6],morph);
+        }
         writer.inner.flush();
     }
 

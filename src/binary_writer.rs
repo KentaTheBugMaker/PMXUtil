@@ -6,7 +6,7 @@ pub mod binary_writer {
     use std::mem::transmute;
     use std::io::Write;
     use std::hash::Hasher;
-    use crate::pmx_types::pmx_types::{PMXVertex, PMXVertexWeight, PMXFace, PMXMaterial, PMXSphereMode, PMXToonMode, PMXIKLink, PMXBone, BONE_FLAG_TARGET_SHOW_MODE_MASK, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_IK_MASK};
+    use crate::pmx_types::pmx_types::{PMXVertex, PMXVertexWeight, PMXFace, PMXMaterial, PMXSphereMode, PMXToonMode, PMXIKLink, PMXBone, BONE_FLAG_TARGET_SHOW_MODE_MASK, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_IK_MASK, PMXMorph, MorphTypes, VertexMorph, UVMorph, BoneMorph, MaterialMorph, GroupMorph};
     use crate::pmx_types::pmx_types::{Vec2, Vec3, Vec4};
 
     pub struct BinaryWriter {
@@ -202,6 +202,57 @@ pub mod binary_writer {
                 }
             }
         }
+        pub(crate) fn write_pmx_morph(&mut self,s_vertex_index:u8,s_bone_index:u8,s_material_index:u8,s_morph_index:u8,morph:PMXMorph){
+            self.write_text_buf(&morph.name);
+            self.write_text_buf(&morph.english_name);
+            self.write_u8(morph.category);
+            self.write_u8(morph.morph_type);
+            self.write_i32(morph.morph_data.len() as i32);
+            for morph_ in morph.morph_data{
+                match morph_ {
+                    MorphTypes::Vertex(morph) => { self.write_vertex_morph(s_vertex_index,morph) },
+                    MorphTypes::UV(morph) => { self.write_uv_morph(s_vertex_index,morph) },
+                    MorphTypes::UV1(morph) => { self.write_uv_morph(s_vertex_index,morph) },
+                    MorphTypes::UV2(morph) => { self.write_uv_morph(s_vertex_index,morph) },
+                    MorphTypes::UV3(morph) => { self.write_uv_morph(s_vertex_index,morph) },
+                    MorphTypes::UV4(morph) => { self.write_uv_morph(s_vertex_index,morph) },
+                    MorphTypes::Bone(morph) => {self.write_bone_morph(s_bone_index,morph)},
+                    MorphTypes::Material(morph) => {self.write_material_morph(s_material_index,morph)},
+                    MorphTypes::Group(morph) => {self.write_group_morph(s_morph_index,morph)},
+                }
+            }
+        }
+         fn write_vertex_morph(&mut self,s_vertex_index:u8,morph:VertexMorph){
+            self.write_sized(s_vertex_index,morph.index);
+            self.write_vec3(morph.offset);
+        }
+         fn write_uv_morph(&mut self,s_vertex_index:u8,morph:UVMorph){
+            self.write_sized(s_vertex_index,morph.index);
+            self.write_vec4(morph.offset);
+        }
+         fn write_bone_morph(&mut self,s_bone_index:u8,morph:BoneMorph){
+            self.write_sized(s_bone_index,morph.index);
+            self.write_vec3(morph.translates);
+            self.write_vec4(morph.rotates);
+        }
+         fn write_material_morph(&mut self,s_material_index:u8,morph:MaterialMorph){
+              self.write_sized(s_material_index,morph.index);
+              self.write_u8(morph.formula);
+              self.write_vec4(morph.diffuse);
+              self.write_vec3(morph.specular);
+              self.write_f32(morph.specular_factor);
+              self.write_vec3(morph.ambient);
+              self.write_vec4(morph.edge_color);
+              self.write_f32(morph.edge_size);
+              self.write_vec4(morph.texture_factor);
+              self.write_vec4(morph.sphere_texture_factor);
+              self.write_vec4(morph.toon_texture_factor);
+        }
+        fn write_group_morph(&mut self,s_morph_index:u8,morph:GroupMorph){
+            self.write_sized(s_morph_index,morph.index);
+            self.write_f32(morph.morph_factor);
+        }
+
         write_bin!(write_vec4, Vec4);
         write_bin!(write_vec3, Vec3);
         write_bin!(write_vec2, Vec2);

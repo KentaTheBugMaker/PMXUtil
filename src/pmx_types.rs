@@ -211,7 +211,7 @@ pub mod pmx_types {
         pub(crate) limit_max: Vec3,
     }
 
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,PartialEq)]
     pub struct PMXMorph {
         pub(crate) name: String,
         pub(crate) english_name: String,
@@ -221,7 +221,7 @@ pub mod pmx_types {
         pub(crate) morph_data: Vec<MorphTypes>,
     }
     pub struct PMXRigidBody;
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,PartialEq)]
     pub enum MorphTypes {
         Vertex(VertexMorph),
         UV(UVMorph),
@@ -234,32 +234,32 @@ pub mod pmx_types {
         Group(GroupMorph),
     }
 
-    #[derive(Debug,Clone,Copy)]
+    #[derive(Debug,Clone,Copy,PartialEq)]
     pub struct VertexMorph {
         pub(crate) index: i32,
         pub(crate) offset: Vec3,
     }
 
-    #[derive(Debug,Clone,Copy)]
+    #[derive(Debug,Clone,Copy,PartialEq)]
     pub struct UVMorph {
         pub(crate) index: i32,
         pub(crate) offset: Vec4,
     }
 
-    #[derive(Debug,Copy, Clone)]
+    #[derive(Debug,Copy, Clone,PartialEq)]
     pub struct GroupMorph {
         pub(crate) index: i32,
         pub(crate) morph_factor: f32,
     }
 
-    #[derive(Debug,Copy, Clone)]
+    #[derive(Debug,Copy, Clone,PartialEq)]
     pub struct BoneMorph {
         pub(crate) index: i32,
         pub(crate) translates: Vec3,
         pub(crate) rotates: Vec4,
     }
 
-    #[derive(Debug,Clone)]
+    #[derive(Debug,Clone,PartialEq)]
     pub struct MaterialMorph {
         pub(crate) index: i32,
         pub(crate) formula: u8,
@@ -274,7 +274,7 @@ pub mod pmx_types {
         pub(crate) toon_texture_factor: Vec4,
     }
 
-    #[derive(Debug)]
+    #[derive(Debug,PartialEq)]
     pub struct PMXMorphs {
         pub(crate) morphs: Vec<PMXMorph>,
     }

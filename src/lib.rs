@@ -68,18 +68,16 @@ mod test {
         writer.add_bones(&bones.bones);
         writer.add_morphs(&morphs.morphs);
         PMXWriter::write(writer);
+
         let reader=PMXLoader::open(to);
         let (model_info_cpy,ns)=ModelInfoLoader::read_pmx_model_info(reader);
         let (vertices_cpy,ns)=VerticesLoader::read_pmx_vertices(ns);
         let (faces_cpy,ns)=FacesLoader::read_pmx_faces(ns);
         let(textures_cpy,ns)=TexturesLoader::read_texture_list(ns);
-
         let (materials_cpy,ns)=MaterialsLoader::read_pmx_materials(ns);
-
         let(bones_cpy,ns)=BonesLoader::read_pmx_bones(ns);
-        /*
         let(morphs_cpy,ns)=MorphsLoader::read_pmx_morphs(ns);
-        */
+
 
         assert_eq!(model_info,model_info_cpy);
         assert_eq!(vertices,vertices_cpy);
@@ -87,5 +85,6 @@ mod test {
         assert_eq!(textures,textures_cpy);
         assert_eq!(materials,materials_cpy);
         assert_eq!(bones,bones_cpy);
+        assert_eq!(morphs,morphs_cpy);
     }
 }
