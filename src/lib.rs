@@ -1,8 +1,8 @@
-mod pmx_writer;
-mod binary_writer;
+pub mod pmx_writer;
+pub mod binary_writer;
 macro_rules! read_bin {
     ($F:ident,$T:ty) => {
-        pub fn $F(&mut self) -> $T {
+        pub(crate) fn $F(&mut self) -> $T {
             let temp;
             let mut buf = [0u8; std::mem::size_of::<$T>()];
             self.inner.read_exact(&mut buf).unwrap();

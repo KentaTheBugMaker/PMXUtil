@@ -39,7 +39,8 @@ use crate::binary_reader::BinaryReader;
         header: PMXHeaderRust,
         inner: BinaryReader,
     }
-    impl PMXLoader {
+impl PMXLoader {
+    /// Start pmx loading . Return  next stage and you can not back to previous stage
         pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
             let mut inner = BinaryReader::open(path).unwrap();
             let header = inner.read_PMXHeader_raw();
@@ -49,6 +50,7 @@ use crate::binary_reader::BinaryReader;
                 inner,
             }
         }
+    /// Get Header Information
         pub fn get_header(&self) -> PMXHeaderRust {
             self.header.clone()
         }
@@ -61,6 +63,8 @@ use crate::binary_reader::BinaryReader;
         pub fn get_header(&self) -> PMXHeaderRust {
             self.header.clone()
         }
+        /// Read model information name , international name, comment , and international comment.
+        /// Next stage is VerticesLoader .
         pub fn read_pmx_model_info(mut stage: Self) -> (PMXModelInfo, VerticesLoader) {
             let mut ctx = PMXModelInfo {
                 name: "".to_string(),
@@ -88,6 +92,8 @@ use crate::binary_reader::BinaryReader;
         pub fn get_header(&self) -> PMXHeaderRust {
             self.header.clone()
         }
+        /// Read vertices position normal uv(texture coord ) etc.
+        /// Next stage is FacesLoader
         pub fn read_pmx_vertices(mut stage: Self) -> (Vec<PMXVertex>, FacesLoader) {
             let verts = stage.inner.read_i32();
             let mut v = Vec::with_capacity(verts as usize);
@@ -187,6 +193,8 @@ use crate::binary_reader::BinaryReader;
         pub fn get_header(&self) -> PMXHeaderRust {
             self.header.clone()
         }
+        /// Read faces similer to index buffer 
+        /// Next stage is TexturesLoader
         pub fn read_pmx_faces(mut stage: Self) -> (Vec<PMXFace>, TexturesLoader) {
             let mut v=vec![];
             let faces = stage.inner.read_i32();
@@ -217,6 +225,10 @@ impl TexturesLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
+    /// Read relative path from current reading file
+    /// in some case path contains /
+    /// you should replace path separator to system path separator
+    /// Next stage is MaterialsLoader
     pub fn read_texture_list(mut stage: Self) -> (PMXTextureList, MaterialsLoader) {
         let textures = stage.inner.read_i32();
         let mut v = vec![];
@@ -238,6 +250,9 @@ impl MaterialsLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
+    ///Read material information name ambient diffuse specular etc parameters.
+    /// for exact model rendering you should passed to shader and processed proper. 
+    ///Next stage is BonesLoader
     pub fn read_pmx_materials(mut stage: Self) -> (Vec<PMXMaterial>, BonesLoader) {
         let mut materials= vec![] ;
         let counts = stage.inner.read_i32();
@@ -315,6 +330,9 @@ impl BonesLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
+    /// read bone information parent child IK etc.
+    /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok 
+    /// Next stage is MorphsLoader
     pub fn read_pmx_bones(mut stage: Self) -> (Vec<PMXBone>, MorphsLoader) {
         let mut bones= vec![] ;
         let count = stage.inner.read_i32();

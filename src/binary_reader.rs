@@ -8,7 +8,8 @@ use std::path::Path;
 use crate::pmx_types::pmx_types::{Encode, PMXHeaderC, Vec2, Vec3, Vec4};
 
 use self::encoding::{DecoderTrap, Encoding};
-
+/// This is internal use only struct
+/// Do not use this struct 
 pub struct BinaryReader {
     inner: BufReader<File>,
 }

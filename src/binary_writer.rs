@@ -8,13 +8,15 @@ pub mod binary_writer {
     use std::hash::Hasher;
     use crate::pmx_types::pmx_types::{PMXVertex, PMXVertexWeight, PMXFace, PMXMaterial, PMXSphereMode, PMXToonMode, PMXIKLink, PMXBone, BONE_FLAG_TARGET_SHOW_MODE_MASK, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_IK_MASK, PMXMorph, MorphTypes, VertexMorph, UVMorph, BoneMorph, MaterialMorph, GroupMorph};
     use crate::pmx_types::pmx_types::{Vec2, Vec3, Vec4};
-
-    pub struct BinaryWriter {
-        pub inner: BufWriter<File>
+    /// This is internal use only struct
+    /// Do not use this struct 
+    pub(crate) struct BinaryWriter {
+        pub(crate) inner: BufWriter<File>
     }
     macro_rules! write_bin {
-($F:ident,$T:ty)=>{
-    pub fn $F(&mut self,value:$T){
+        ($F:ident,$T:ty)=>{
+    ///Macro implemented member for internal use
+    pub(crate) fn $F(&mut self,value:$T){
     let mut buf=[0u8;std::mem::size_of::<$T>()];
     unsafe{buf=transmute(value)};
         self.inner.write(&buf).unwrap();
@@ -35,17 +37,17 @@ pub mod binary_writer {
                 Err(err) => Err(err)
             }
         }
-        pub fn write_vec(&mut self, v: &[u8]) {
+        pub(crate) fn write_vec(&mut self, v: &[u8]) {
             self.inner.write(&v).unwrap();
         }
 
-        pub fn write_text_buf(&mut self, text: &str) {
+        pub(crate) fn write_text_buf(&mut self, text: &str) {
             let len = text.len();
             self.write_i32(len as i32);
             self.write_vec(text.as_bytes());
         }
 
-        pub fn write_vertex_index(&mut self, size: u8, value: u32) {
+        pub(crate) fn write_vertex_index(&mut self, size: u8, value: u32) {
             match size {
                 1 => { self.write_u8(value as u8) }
                 2 => { self.write_u16(value as u16) }
@@ -53,7 +55,7 @@ pub mod binary_writer {
                 _ => {}
             }
         }
-        pub fn write_sized(&mut self, size: u8, value: i32) {
+        pub(crate) fn write_sized(&mut self, size: u8, value: i32) {
             match size {
                 1 => { self.write_i8(value as i8); }
                 2 => { self.write_i16(value as i16); }

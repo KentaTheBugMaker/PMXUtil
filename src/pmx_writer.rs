@@ -2,7 +2,16 @@ use crate::pmx_types::pmx_types::{PMXModelInfo, PMXVertex, PMXFace, PMXTextureLi
 use crate::binary_writer::binary_writer::BinaryWriter;
 use std::path::Path;
 use std::io::Write;
-
+/// This is PMXWriter.
+/// This hold all PMX ingredient Vertex Face Texture Path etc.
+/// When write was called all data was wrote and drop self.
+/// ```rust
+/// let mut writer=pmx_writer::PMXWriter::begin_writer("/path/to/pmxfile");
+/// writer.set_model_info(Some("Name "),Some("Name international"),Some("Comment"),Some("Comment international"));
+///writer.set_additional_uv(4)// vertices contains 4 additional uv
+///writer.add_vertices(&[vertices]);
+///writer.write()
+/// ```
 pub struct PMXWriter{
     inner:BinaryWriter,
     model_info:Option<PMXModelInfo>,

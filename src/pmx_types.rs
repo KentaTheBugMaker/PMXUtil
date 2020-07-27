@@ -41,7 +41,7 @@ pub mod pmx_types {
     const MATERIAL_DRAW_LINE_MASK: u8 = 0x80;
 
     #[repr(packed)]
-    pub struct PMXHeaderC {
+    pub(crate) struct PMXHeaderC {
         pub(crate) magic: [u8; 4],
         pub(crate) version: f32,
         pub(crate) length: u8,
