@@ -1,6 +1,6 @@
 [package]
 name = "PMXUtil"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["t18b219k"]
 edition = "2018"
 repository = "https://github.com/t18b219k/PMXUtil"
@@ -8,8 +8,8 @@ keywords = ["mmd","pmx"]
 license-file = "LICENSE"
 license="MIT OR Apache-2.0"
 readme = "README.md"
-licese= "GPLV3"
-description = "A simple pmx loader "
+
+description = "A simple pmx loader and writer"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
