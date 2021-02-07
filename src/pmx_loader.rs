@@ -1,3 +1,7 @@
+///Loader for pmx files
+///The first stage loader is PMXLoader
+///To avoid crash you can not return to previous loader (API protected)
+
 use crate::binary_reader::BinaryReader;
 
     use crate::pmx_types::pmx_types::{Encode, PMXFace, PMXHeaderC, PMXModelInfo, PMXVertex, PMXVertexWeight, BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXHeaderRust, PMXIKLink, PMXMaterial, PMXMorph, PMXSphereMode, PMXTextureList, PMXToonMode, UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, PMXFrame, FrameInner};
@@ -39,7 +43,12 @@ use crate::binary_reader::BinaryReader;
         header: PMXHeaderRust,
     }
 impl PMXLoader {
-    /// Start pmx loading . Return  next self and you can not back to previous self
+    ///```rust
+    /// let modelinfo_loader=PMXLoader::open("/path/to/pmxfile");
+    /// let (modelinfo,vertices_loader)=modelinfo_loader.read_pmx_model_info();
+    /// let (vertices,faces_loader)=vertices_loader.read_pmx_vertices();
+    ///```
+    /// Start pmx loading . Return  next stage and you can not back to previous stage
         pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
             let mut inner = BinaryReader::open(path).unwrap();
             let header = inner.read_PMXHeader_raw();

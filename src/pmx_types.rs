@@ -4,7 +4,7 @@ pub mod pmx_types {
     pub type Vec2 = [f32; 2];
     pub type Vec3 = [f32; 3];
     pub type Vec4 = [f32; 4];
-
+    /// represent text encoding but all texts in pmx file are converted to String so you don't need to care
     #[repr(u8)]
     #[derive(Debug, Clone, Copy)]
     pub enum Encode {
@@ -47,7 +47,9 @@ pub mod pmx_types {
         pub(crate) length: u8,
         pub(crate) config: [u8; 8],
     }
-
+    ///these are pmx file header
+    /// record magic number , version , text encoding ,and index size
+    /// but internal use only so you don't need to care
     #[derive(Debug, Clone)]
     pub struct PMXHeaderRust {
         pub magic: String,
@@ -62,13 +64,13 @@ pub mod pmx_types {
         pub s_morph_index: u8,
         pub s_rigid_body_index: u8,
     }
-
+    ///represent index size of pmx data but these are converted to i32 or u32 so you don't need to care
     pub enum IndexSize {
         Byte,
         Short,
         Int,
     }
-
+    /// these are pmx embedded comments and names
     #[derive(Debug,Eq, PartialEq,Clone)]
     pub struct PMXModelInfo {
         pub name: String,
@@ -85,7 +87,8 @@ pub mod pmx_types {
         SDEF = 0x03,
         QDEF = 0x04,
     }
-
+    ///these value are must submitted to vertex shader
+    /// but bone_indices bone_weights must submitted to physics engine
     #[derive(Debug,Clone, PartialEq)]
     pub struct PMXVertex {
         pub position: Vec3,
@@ -102,11 +105,12 @@ pub mod pmx_types {
     }
 
     /*Represent Triangle*/
+    /// represent one triangle
     #[derive(Copy, Clone,Eq, PartialEq,Debug)]
     pub struct PMXFace {
         pub vertices: [u32; 3],
     }
-
+    /// texture file name list
     #[derive(Debug,Eq,PartialEq)]
     pub struct PMXTextureList {
         pub textures: Vec<String>,
@@ -137,7 +141,7 @@ pub mod pmx_types {
         //< 0:個別Toon
         Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
-
+    /// these values are must submitted to fragment or vertex shader by uniform or push_constant
     #[derive(Debug,Clone, PartialEq)]
     pub struct PMXMaterial {
         pub name: String,

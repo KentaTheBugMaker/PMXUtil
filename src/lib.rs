@@ -15,6 +15,14 @@ macro_rules! read_bin {
 }
 
 pub mod binary_reader;
+/// PMX loader
+///
+/// ```rust
+/// extern crate PMXUtil;
+/// use PMXUtil::pmx_loader;
+/// let modelinfo_loader=pmx_loader::PMXLoader::open("/path/to/pmxfile");
+/// let (modelinfo,vertices_loader)=modelinfo_loader.read_pmx_model_info();
+/// ```
 pub mod pmx_loader;
 pub mod pmx_types;
 
