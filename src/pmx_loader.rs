@@ -37,10 +37,9 @@ use crate::binary_reader::BinaryReader;
 
     pub struct PMXLoader {
         header: PMXHeaderRust,
-        inner: BinaryReader,
     }
 impl PMXLoader {
-    /// Start pmx loading . Return  next stage and you can not back to previous stage
+    /// Start pmx loading . Return  next self and you can not back to previous self
         pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
             let mut inner = BinaryReader::open(path).unwrap();
             let header = inner.read_PMXHeader_raw();
@@ -64,22 +63,22 @@ impl PMXLoader {
             self.header.clone()
         }
         /// Read model information name , international name, comment , and international comment.
-        /// Next stage is VerticesLoader .
-        pub fn read_pmx_model_info(mut stage: Self) -> (PMXModelInfo, VerticesLoader) {
+        /// Next self is VerticesLoader .
+        pub fn read_pmx_model_info(mut self) -> (PMXModelInfo, VerticesLoader) {
             let mut ctx = PMXModelInfo {
                 name: "".to_string(),
                 name_en: "".to_string(),
                 comment: "".to_string(),
                 comment_en: "".to_string(),
             };
-            let enc = stage.header.encode;
-            ctx.name = stage.inner.read_text_buf(enc);
-            ctx.name_en = stage.inner.read_text_buf(enc);
-            ctx.comment = stage.inner.read_text_buf(enc);
-            ctx.comment_en = stage.inner.read_text_buf(enc);
+            let enc = self.header.encode;
+            ctx.name = self.inner.read_text_buf(enc);
+            ctx.name_en = self.inner.read_text_buf(enc);
+            ctx.comment = self.inner.read_text_buf(enc);
+            ctx.comment_en = self.inner.read_text_buf(enc);
             let verticesloader = VerticesLoader {
-                header: stage.header,
-                inner: stage.inner,
+                header: self.header,
+                inner: self.inner,
             };
             (ctx, verticesloader)
         }
@@ -93,17 +92,17 @@ impl PMXLoader {
             self.header.clone()
         }
         /// Read vertices position normal uv(texture coord ) etc.
-        /// Next stage is FacesLoader
-        pub fn read_pmx_vertices(mut stage: Self) -> (Vec<PMXVertex>, FacesLoader) {
-            let verts = stage.inner.read_i32();
+        /// Next self is FacesLoader
+        pub fn read_pmx_vertices(mut self) -> (Vec<PMXVertex>, FacesLoader) {
+            let verts = self.inner.read_i32();
             let mut v = Vec::with_capacity(verts as usize);
             for _ in 0..verts {
-                v.push(stage.read_pmx_vertex());
+                v.push(self.read_pmx_vertex());
             }
             assert_eq!(verts as usize, v.len());
             let faceloader = FacesLoader {
-                header: stage.header,
-                inner: stage.inner,
+                header: self.header,
+                inner: self.inner,
             };
             (v, faceloader)
         }
@@ -194,26 +193,26 @@ impl PMXLoader {
             self.header.clone()
         }
         /// Read faces similer to index buffer 
-        /// Next stage is TexturesLoader
-        pub fn read_pmx_faces(mut stage: Self) -> (Vec<PMXFace>, TexturesLoader) {
+        /// Next self is TexturesLoader
+        pub fn read_pmx_faces(mut self) -> (Vec<PMXFace>, TexturesLoader) {
             let mut v=vec![];
-            let faces = stage.inner.read_i32();
-            let s_vertex_index = stage.header.s_vertex_index;
+            let faces = self.inner.read_i32();
+            let s_vertex_index = self.header.s_vertex_index;
             let faces = faces / 3;
             for _ in 0..faces {
-                let v0 = stage.inner.read_vertex_index(s_vertex_index).unwrap();
-                let v1 = stage.inner.read_vertex_index(s_vertex_index).unwrap();
-                let v2 = stage.inner.read_vertex_index(s_vertex_index).unwrap();
+                let v0 = self.inner.read_vertex_index(s_vertex_index).unwrap();
+                let v1 = self.inner.read_vertex_index(s_vertex_index).unwrap();
+                let v2 = self.inner.read_vertex_index(s_vertex_index).unwrap();
                 v.push(PMXFace {
                     vertices: [v0, v1, v2],
                 });
             }
             assert_eq!(v.len(), faces as usize);
-            let next_stage = TexturesLoader {
-                header: stage.header,
-                inner: stage.inner,
+            let next_self = TexturesLoader {
+                header: self.header,
+                inner: self.inner,
             };
-            (v, next_stage)
+            (v, next_self)
         }
     }
 
@@ -228,18 +227,18 @@ impl TexturesLoader {
     /// Read relative path from current reading file
     /// in some case path contains /
     /// you should replace path separator to system path separator
-    /// Next stage is MaterialsLoader
-    pub fn read_texture_list(mut stage: Self) -> (PMXTextureList, MaterialsLoader) {
-        let textures = stage.inner.read_i32();
+    /// Next self is MaterialsLoader
+    pub fn read_texture_list(mut self) -> (PMXTextureList, MaterialsLoader) {
+        let textures = self.inner.read_i32();
         let mut v = vec![];
         for _ in 0..textures {
-            v.push(stage.inner.read_text_buf(stage.header.encode));
+            v.push(self.inner.read_text_buf(self.header.encode));
         }
-        let next_stage = MaterialsLoader {
-            header: stage.header,
-            inner: stage.inner,
+        let next_self = MaterialsLoader {
+            header: self.header,
+            inner: self.inner,
         };
-        (PMXTextureList { textures: v }, next_stage)
+        (PMXTextureList { textures: v }, next_self)
     }
 }
 pub struct MaterialsLoader {
@@ -252,19 +251,19 @@ impl MaterialsLoader {
     }
     ///Read material information name ambient diffuse specular etc parameters.
     /// for exact model rendering you should passed to shader and processed proper. 
-    ///Next stage is BonesLoader
-    pub fn read_pmx_materials(mut stage: Self) -> (Vec<PMXMaterial>, BonesLoader) {
+    ///Next self is BonesLoader
+    pub fn read_pmx_materials(mut self) -> (Vec<PMXMaterial>, BonesLoader) {
         let mut materials= vec![] ;
-        let counts = stage.inner.read_i32();
+        let counts = self.inner.read_i32();
         for _ in 0..counts {
-            let material = stage.read_pmx_material();
+            let material = self.read_pmx_material();
             materials.push(material);
         }
-        let next_stage = BonesLoader {
-            header: stage.header,
-            inner: stage.inner,
+        let next_self = BonesLoader {
+            header: self.header,
+            inner: self.inner,
         };
-        (materials, next_stage)
+        (materials, next_self)
     }
     fn read_pmx_material(&mut self) -> PMXMaterial {
         let s_texture_index = self.header.s_texture_index;
@@ -332,21 +331,21 @@ impl BonesLoader {
     }
     /// read bone information parent child IK etc.
     /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok 
-    /// Next stage is MorphsLoader
-    pub fn read_pmx_bones(mut stage: Self) -> (Vec<PMXBone>, MorphsLoader) {
+    /// Next self is MorphsLoader
+    pub fn read_pmx_bones(mut self) -> (Vec<PMXBone>, MorphsLoader) {
         let mut bones= vec![] ;
-        let count = stage.inner.read_i32();
+        let count = self.inner.read_i32();
 
         for _ in 0..count {
-            let bone = stage.read_pmx_bone();
+            let bone = self.read_pmx_bone();
             bones.push(bone);
         }
 
-        let next_stage = MorphsLoader {
-            header: stage.header,
-            inner: stage.inner,
+        let next_self = MorphsLoader {
+            header: self.header,
+            inner: self.inner,
         };
-        (bones, next_stage)
+        (bones, next_self)
     }
     fn read_pmx_bone(&mut self) -> PMXBone {
         let encode = self.header.encode;
@@ -441,19 +440,19 @@ impl MorphsLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_pmx_morphs(mut stage: Self) -> (Vec<PMXMorph>, FrameLoader) {
+    pub fn read_pmx_morphs(mut self) -> (Vec<PMXMorph>, FrameLoader) {
         let mut morphs= vec![] ;
-        let count = stage.inner.read_i32();
+        let count = self.inner.read_i32();
 
         for _ in 0..count {
-            let bone = stage.read_pmx_morph();
+            let bone = self.read_pmx_morph();
             morphs.push(bone);
         }
 
 
         (morphs, FrameLoader{
-            header: stage.header,
-            inner: stage.inner
+            header: self.header,
+            inner: self.inner
         })
     }
 
@@ -567,20 +566,20 @@ impl FrameLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_frames(mut stage:Self)->(Vec<PMXFrame>,()){
-        let count=stage.inner.read_i32();
+    pub fn read_frames(mut self:Self)->(Vec<PMXFrame>,()){
+        let count=self.inner.read_i32();
         let mut frames=vec![];
-        for i in 0..count {
-            let name = stage.inner.read_text_buf(stage.header.encode);
-            let name_en = stage.inner.read_text_buf(stage.header.encode);
-            let flag = stage.inner.read_u8();
-            let count=stage.inner.read_i32();
+        for _ in 0..count {
+            let name = self.inner.read_text_buf(self.header.encode);
+            let name_en = self.inner.read_text_buf(self.header.encode);
+            let flag = self.inner.read_u8();
+            let count=self.inner.read_i32();
             let mut o=vec![];
-            for i in 0..count{
-                let target=stage.inner.read_u8();
+            for _ in 0..count{
+                let target=self.inner.read_u8();
                 let index=match target {
-                    0=>{stage.inner.read_sized(stage.header.s_bone_index).unwrap()}
-                    1=>{stage.inner.read_sized(stage.header.s_morph_index).unwrap()}
+                    0=>{self.inner.read_sized(self.header.s_bone_index).unwrap()}
+                    1=>{self.inner.read_sized(self.header.s_morph_index).unwrap()}
                     _=>{panic!("Invalid frame ")}
                 };
                 o.push(FrameInner{ target, index })

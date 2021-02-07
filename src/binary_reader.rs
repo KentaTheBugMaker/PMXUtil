@@ -8,14 +8,13 @@ use std::path::Path;
 use crate::pmx_types::pmx_types::{Encode, PMXHeaderC, Vec2, Vec3, Vec4};
 
 use self::encoding::{DecoderTrap, Encoding};
-/// This is internal use only struct
-/// Do not use this struct 
-pub struct BinaryReader {
+
+pub(crate) struct BinaryReader {
     inner: BufReader<File>,
 }
 
 impl BinaryReader {
-    pub fn open<P: AsRef<Path>>(path: P) -> Result<BinaryReader, Error> {
+    pub(crate) fn open<P: AsRef<Path>>(path: P) -> Result<BinaryReader, Error> {
         let file = File::open(&path);
         let file_size = std::fs::metadata(&path).unwrap().len();
 
@@ -27,13 +26,13 @@ impl BinaryReader {
             Err(err) => Err(err),
         }
     }
-    pub fn read_vec(&mut self, n: usize) -> Vec<u8> {
+    pub(crate) fn read_vec(&mut self, n: usize) -> Vec<u8> {
         let mut v = Vec::with_capacity(n);
         v.resize(n, 0u8);
         self.inner.read_exact(&mut v).unwrap();
         v
     }
-    pub fn read_text_buf(&mut self, encode: Encode) -> String {
+    pub(crate) fn read_text_buf(&mut self, encode: Encode) -> String {
         let length = self.read_i32();
         let v = self.read_vec(length as usize);
         match encode {
@@ -44,7 +43,7 @@ impl BinaryReader {
         }
     }
 
-    pub fn read_vertex_index(&mut self, n: u8) -> Option<u32> {
+    pub(crate) fn read_vertex_index(&mut self, n: u8) -> Option<u32> {
         match n {
             1 => Some(self.read_u8() as u32),
             2 => Some(self.read_u16() as u32),
@@ -52,7 +51,7 @@ impl BinaryReader {
             _ => None,
         }
     }
-    pub fn read_sized(&mut self, n: u8) -> Option<i32> {
+    pub(crate) fn read_sized(&mut self, n: u8) -> Option<i32> {
         match n {
             1 => {
                 let tmp = self.read_u8();

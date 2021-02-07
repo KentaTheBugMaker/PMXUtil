@@ -5,7 +5,7 @@ pub mod binary_writer {
     use std::path::Path;
     use std::mem::transmute;
     use std::io::Write;
-    use std::hash::Hasher;
+
     use crate::pmx_types::pmx_types::{PMXVertex, PMXVertexWeight, PMXFace, PMXMaterial, PMXSphereMode, PMXToonMode, PMXIKLink, PMXBone, BONE_FLAG_TARGET_SHOW_MODE_MASK, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_IK_MASK, PMXMorph, MorphTypes, VertexMorph, UVMorph, BoneMorph, MaterialMorph, GroupMorph};
     use crate::pmx_types::pmx_types::{Vec2, Vec3, Vec4};
     /// This is internal use only struct
