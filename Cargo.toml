@@ -7,7 +7,7 @@ repository = "https://github.com/t18b219k/PMXUtil"
 keywords = ["mmd","pmx"]
 license="MIT OR Apache-2.0"
 readme = "README.md"
-
+documentation = "https://docs.rs/PMXUtil"
 description = "A simple pmx loader and writer"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
