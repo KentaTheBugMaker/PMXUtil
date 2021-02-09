@@ -1,4 +1,4 @@
-use crate::pmx_types::pmx_types::{PMXModelInfo, PMXVertex, PMXFace, PMXTextureList, PMXMaterial, PMXMorph, PMXBone, PMXRigidBody, PMXFrame};
+use crate::pmx_types::pmx_types::{PMXModelInfo, PMXVertex, PMXFace, PMXTextureList, PMXMaterial, PMXMorph, PMXBone, PMXFrame, PMXRigid};
 use crate::binary_writer::binary_writer::BinaryWriter;
 use std::path::Path;
 use std::io::Write;
@@ -23,7 +23,7 @@ pub struct PMXWriter{
     bones:Vec<PMXBone>,
     morphs:Vec<PMXMorph>,
     frames:Vec<PMXFrame>,
-    rigid_bodies:Vec<PMXRigidBody>
+    rigid_bodies:Vec<PMXRigid>
 }
 impl PMXWriter{
     /// Set model name and start builder

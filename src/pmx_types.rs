@@ -41,11 +41,11 @@ pub mod pmx_types {
     const MATERIAL_DRAW_LINE_MASK: u8 = 0x80;
 
     #[repr(packed)]
-    pub(crate) struct PMXHeaderC {
-        pub(crate) magic: [u8; 4],
-        pub(crate) version: f32,
-        pub(crate) length: u8,
-        pub(crate) config: [u8; 8],
+    pub struct PMXHeaderC {
+        pub magic: [u8; 4],
+        pub version: f32,
+        pub length: u8,
+        pub config: [u8; 8],
     }
     ///these are pmx file header
     /// record magic number , version , text encoding ,and index size
@@ -166,8 +166,8 @@ pub mod pmx_types {
     pub struct PMXFrame{
        pub name:String,
        pub name_en:String,
-        pub(crate) is_special:u8,
-        pub(crate) inners:Vec<FrameInner>
+        pub is_special:u8,
+        pub inners:Vec<FrameInner>
     }
     #[derive(Debug,Copy, Clone,Eq, PartialEq)]
    pub struct FrameInner{
@@ -177,44 +177,44 @@ pub mod pmx_types {
 
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXBone {
-        pub(crate) name: String,
-        pub(crate) english_name: String,
-        pub(crate) position: Vec3,
-        pub(crate) parent: i32,
-        pub(crate) deform_depth: i32,
-        pub(crate) boneflag: u16,
-        pub(crate) offset: Vec3,
-        pub(crate) child: i32,
-        pub(crate) append_bone_index: i32,
-        pub(crate) append_weight: f32,
-        pub(crate) fixed_axis: Vec3,
-        pub(crate) local_axis_x: Vec3,
-        pub(crate) local_axis_z: Vec3,
-        pub(crate) key_value: i32,
-        pub(crate) ik_target_index: i32,
-        pub(crate) ik_iter_count: i32,
-        pub(crate) ik_limit: f32,
-        pub(crate) ik_links: Vec<PMXIKLink>,
+        pub name: String,
+        pub english_name: String,
+        pub position: Vec3,
+        pub parent: i32,
+        pub deform_depth: i32,
+        pub boneflag: u16,
+        pub offset: Vec3,
+        pub child: i32,
+        pub append_bone_index: i32,
+        pub append_weight: f32,
+        pub fixed_axis: Vec3,
+        pub local_axis_x: Vec3,
+        pub local_axis_z: Vec3,
+        pub key_value: i32,
+        pub ik_target_index: i32,
+        pub ik_iter_count: i32,
+        pub ik_limit: f32,
+        pub ik_links: Vec<PMXIKLink>,
     }
 
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXIKLink {
-        pub(crate) ik_bone_index: i32,
-        pub(crate) enable_limit: u8,
-        pub(crate) limit_min: Vec3,
-        pub(crate) limit_max: Vec3,
+        pub ik_bone_index: i32,
+        pub enable_limit: u8,
+        pub limit_min: Vec3,
+        pub limit_max: Vec3,
     }
 
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXMorph {
-        pub(crate) name: String,
-        pub(crate) english_name: String,
-        pub(crate) category: u8,
-        pub(crate) morph_type: u8,
-        pub(crate) offset: i32,
-        pub(crate) morph_data: Vec<MorphTypes>,
+        pub name: String,
+        pub english_name: String,
+        pub category: u8,
+        pub morph_type: u8,
+        pub offset: i32,
+        pub morph_data: Vec<MorphTypes>,
     }
-    pub struct PMXRigidBody;
+
     #[derive(Debug,Clone,PartialEq)]
     pub enum MorphTypes {
         Vertex(VertexMorph),
@@ -230,46 +230,70 @@ pub mod pmx_types {
 
     #[derive(Debug,Clone,Copy,PartialEq)]
     pub struct VertexMorph {
-        pub(crate) index: i32,
-        pub(crate) offset: Vec3,
+        pub index: i32,
+        pub offset: Vec3,
     }
 
     #[derive(Debug,Clone,Copy,PartialEq)]
     pub struct UVMorph {
-        pub(crate) index: i32,
-        pub(crate) offset: Vec4,
+        pub index: i32,
+        pub offset: Vec4,
     }
 
     #[derive(Debug,Copy, Clone,PartialEq)]
     pub struct GroupMorph {
-        pub(crate) index: i32,
-        pub(crate) morph_factor: f32,
+        pub index: i32,
+        pub morph_factor: f32,
     }
 
     #[derive(Debug,Copy, Clone,PartialEq)]
     pub struct BoneMorph {
-        pub(crate) index: i32,
-        pub(crate) translates: Vec3,
-        pub(crate) rotates: Vec4,
+        pub index: i32,
+        pub translates: Vec3,
+        pub rotates: Vec4,
     }
 
     #[derive(Debug,Clone,PartialEq)]
     pub struct MaterialMorph {
-        pub(crate) index: i32,
-        pub(crate) formula: u8,
-        pub(crate) diffuse: Vec4,
-        pub(crate) specular: Vec3,
-        pub(crate) specular_factor: f32,
-        pub(crate) ambient: Vec3,
-        pub(crate) edge_color: Vec4,
-        pub(crate) edge_size: f32,
-        pub(crate) texture_factor: Vec4,
-        pub(crate) sphere_texture_factor: Vec4,
-        pub(crate) toon_texture_factor: Vec4,
+        pub index: i32,
+        pub formula: u8,
+        pub diffuse: Vec4,
+        pub specular: Vec3,
+        pub specular_factor: f32,
+        pub ambient: Vec3,
+        pub edge_color: Vec4,
+        pub edge_size: f32,
+        pub texture_factor: Vec4,
+        pub sphere_texture_factor: Vec4,
+        pub toon_texture_factor: Vec4,
     }
-
-
-
+    pub struct PMXRigid{
+       pub name:String,
+       pub name_en:String,
+       pub bone_index:i32,
+       pub group:i8,
+       pub un_collision_group_flag:u16,
+       pub form:PMXRigidForm,
+       pub size:Vec3,
+       pub position:Vec3,
+       pub rotation:Vec3,
+       pub mass:f32,
+       pub move_resist:f32,
+       pub rotation_resist:f32,
+       pub repulsion:f32,
+       pub friction:f32,
+       pub calc_method:PMXRigidCalcMethod
+    }
+    pub enum PMXRigidForm{
+        Sphere,//0
+        Box,//1
+        Capsule//2
+    }
+    pub enum PMXRigidCalcMethod{
+        Static,//0
+        Dynamic,//1
+        DynamicWithBonePosition//2
+    }
 
     impl Display for PMXVertex {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {

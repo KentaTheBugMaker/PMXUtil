@@ -4,7 +4,7 @@
 
 use crate::binary_reader::BinaryReader;
 
-    use crate::pmx_types::pmx_types::{Encode, PMXFace, PMXHeaderC, PMXModelInfo, PMXVertex, PMXVertexWeight, BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXHeaderRust, PMXIKLink, PMXMaterial, PMXMorph, PMXSphereMode, PMXTextureList, PMXToonMode, UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, PMXFrame, FrameInner};
+    use crate::pmx_types::pmx_types::{Encode, PMXFace, PMXHeaderC, PMXModelInfo, PMXVertex, PMXVertexWeight, BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXHeaderRust, PMXIKLink, PMXMaterial, PMXMorph, PMXSphereMode, PMXTextureList, PMXToonMode, UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, PMXFrame, FrameInner, PMXRigid, PMXRigidForm, PMXRigidCalcMethod};
     use std::path::Path;
 
     fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
@@ -575,7 +575,7 @@ impl FrameLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_frames(mut self:Self)->(Vec<PMXFrame>,()){
+    pub fn read_frames(mut self)->(Vec<PMXFrame>,RigidLoader){
         let count=self.inner.read_i32();
         let mut frames=vec![];
         for _ in 0..count {
@@ -600,6 +600,69 @@ impl FrameLoader {
                 inners:o
             })
         }
-        (frames,())
+        (frames,RigidLoader{ header: self.header, inner: self.inner })
     }
+}
+pub struct RigidLoader{
+    header:PMXHeaderRust,
+    inner:BinaryReader
+}
+impl RigidLoader{
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
+    }
+    pub fn read_rigids(mut self) ->(Vec<PMXRigid>, JointLoader){
+        let len=self.inner.read_i32();
+        let mut bodies=Vec::with_capacity(len as usize);
+        for _ in 0..len{
+            let name=self.inner.read_text_buf(self.header.encode);
+            let name_en=self.inner.read_text_buf(self.header.encode);
+            let bone_index=self.inner.read_sized(self.header.s_bone_index).unwrap();
+            let group=self.inner.read_i8();
+            let un_collision_group_flag=self.inner.read_u16();
+            let form=match self.inner.read_i8() {
+                0=>PMXRigidForm::Sphere,
+                1=>PMXRigidForm::Box,
+                2=>PMXRigidForm::Capsule,
+                _=>{unreachable!("Invalid PMX file detected at rigid loader")}
+            };
+            let size=self.inner.read_vec3();
+            let position=self.inner.read_vec3();
+            let rotation=self.inner.read_vec3();
+            let mass=self.inner.read_f32();
+            let move_resist=self.inner.read_f32();
+            let rotation_resist=self.inner.read_f32();
+            let repulsion=self.inner.read_f32();
+            let friction=self.inner.read_f32();
+            let calc_method=match self.inner.read_i8(){
+                0=>PMXRigidCalcMethod::Static,
+                1=>PMXRigidCalcMethod::Dynamic,
+                2=>PMXRigidCalcMethod::DynamicWithBonePosition,
+                _=>{unreachable!("Invalid PMX file detected as rigid loader")}
+            };
+        bodies.push(PMXRigid{
+            name,
+            name_en,
+            bone_index,
+            group,
+            un_collision_group_flag,
+            form,
+            size,
+            position,
+            rotation,
+            mass,
+            move_resist,
+            rotation_resist,
+            repulsion,
+            friction,
+            calc_method
+        });
+        }
+        (bodies,JointLoader{ header:self.header , inner: self.inner })
+    }
+
+}
+pub struct JointLoader{
+    header:PMXHeaderRust,
+    inner:BinaryReader
 }
