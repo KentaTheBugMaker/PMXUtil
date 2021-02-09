@@ -5,7 +5,7 @@ use std::intrinsics::transmute;
 use std::io::{BufReader, Error, Read};
 use std::path::Path;
 
-use crate::pmx_types::pmx_types::{Encode, PMXHeaderC, Vec2, Vec3, Vec4};
+use crate::pmx_types::pmx_types::{Encode, PMXHeaderC, PMXJointParameterRaw, Vec2, Vec3, Vec4};
 
 use self::encoding::{DecoderTrap, Encoding};
 
@@ -76,7 +76,7 @@ impl BinaryReader {
             _ => None,
         }
     }
-
+    read_bin!(read_pmx_joint_parameter_raw,PMXJointParameterRaw);
     read_bin!(read_vec4, Vec4);
     read_bin!(read_vec3, Vec3);
     read_bin!(read_vec2, Vec2);

@@ -267,32 +267,132 @@ pub mod pmx_types {
         pub sphere_texture_factor: Vec4,
         pub toon_texture_factor: Vec4,
     }
-    pub struct PMXRigid{
-       pub name:String,
-       pub name_en:String,
-       pub bone_index:i32,
-       pub group:i8,
-       pub un_collision_group_flag:u16,
-       pub form:PMXRigidForm,
-       pub size:Vec3,
-       pub position:Vec3,
-       pub rotation:Vec3,
-       pub mass:f32,
-       pub move_resist:f32,
-       pub rotation_resist:f32,
-       pub repulsion:f32,
-       pub friction:f32,
-       pub calc_method:PMXRigidCalcMethod
+
+    pub struct PMXRigid {
+        pub name: String,
+        pub name_en: String,
+        pub bone_index: i32,
+        pub group: i8,
+        pub un_collision_group_flag: u16,
+        pub form: PMXRigidForm,
+        pub size: Vec3,
+        pub position: Vec3,
+        pub rotation: Vec3,
+        pub mass: f32,
+        pub move_resist: f32,
+        pub rotation_resist: f32,
+        pub repulsion: f32,
+        pub friction: f32,
+        pub calc_method: PMXRigidCalcMethod,
     }
-    pub enum PMXRigidForm{
-        Sphere,//0
-        Box,//1
-        Capsule//2
+
+    pub enum PMXRigidForm {
+        Sphere,
+        //0
+        Box,
+        //1
+        Capsule,//2
     }
-    pub enum PMXRigidCalcMethod{
-        Static,//0
-        Dynamic,//1
-        DynamicWithBonePosition//2
+
+    pub enum PMXRigidCalcMethod {
+        Static,
+        //0
+        Dynamic,
+        //1
+        DynamicWithBonePosition,//2
+    }
+
+    /// C bridge
+    /// This struct is fixed size so we can use read_bin!
+    #[repr(packed)]
+    pub(crate) struct PMXJointParameterRaw {
+        pub(crate) joint_type: i8,
+        pub(crate) a_rigid_index: i32,
+        pub(crate) b_rigid_index: i32,
+        pub(crate) position: Vec3,
+        pub(crate) rotation: Vec3,
+        pub(crate) move_limit_down: Vec3,
+        pub(crate) move_limit_up: Vec3,
+        pub(crate) rotation_limit_down: Vec3,
+        pub(crate) rotation_limit_up: Vec3,
+        pub(crate) spring_const_move: Vec3,
+        pub(crate) spring_const_rotation: Vec3,
+    }
+
+    pub struct PMXJoint {
+        pub name: String,
+        pub name_en: String,
+        pub joint_type: PMXJointType,
+    }
+
+    pub enum PMXJointType {
+        ///Support from PMXUtil 0.4.0
+        Spring6DOF {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
+            position: Vec3,
+            rotation: Vec3,
+            move_limit_down: Vec3,
+            move_limit_up: Vec3,
+            rotation_limit_down: Vec3,
+            rotation_limit_up: Vec3,
+            spring_const_move: Vec3,
+            spring_const_rotation: Vec3,
+        },
+        _6DOF {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
+            position: Vec3,
+            rotation: Vec3,
+            move_limit_down: Vec3,
+            move_limit_up: Vec3,
+            rotation_limit_down: Vec3,
+            rotation_limit_up: Vec3,
+        },
+        P2P {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
+            position: Vec3,
+            rotation: Vec3,
+        },
+        ConeTwist {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
+            swing_span1: f32,
+            swing_span2: f32,
+            twist_span: f32,
+            softness: f32,
+            bias_factor: f32,
+            relaxation_factor: f32,
+            damping: f32,
+            fix_thresh: f32,
+            enable_motor: bool,
+            max_motor_impulse: f32,
+            motor_target_in_constraint_space: Vec3,
+        },
+        Slider {
+            lower_linear_limit: f32,
+            upper_linear_limit: f32,
+            lower_angle_limit: f32,
+            upper_angle_limit: f32,
+            power_linear_motor: bool,
+            target_linear_motor_velocity: f32,
+            max_linear_motor_force: f32,
+            power_angler_motor: bool,
+            target_angler_motor_velocity: f32,
+            max_angler_motor_force: f32,
+        },
+        Hinge {
+            low: f32,
+            high: f32,
+            softness: f32,
+            bias_factor: f32,
+            relaxation_factor: f32,
+            enable_motor: bool,
+            enable_angle_motor: bool,
+            target_velocity: f32,
+            max_motor_impulse: f32,
+        },
     }
 
     impl Display for PMXVertex {

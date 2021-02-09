@@ -1,13 +1,13 @@
+use std::path::Path;
+
 ///Loader for pmx files
 ///The first stage loader is PMXLoader
 ///To avoid crash you can not return to previous loader (API protected)
 
 use crate::binary_reader::BinaryReader;
+use crate::pmx_types::pmx_types::{BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSphereMode, PMXTextureList, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph};
 
-    use crate::pmx_types::pmx_types::{Encode, PMXFace, PMXHeaderC, PMXModelInfo, PMXVertex, PMXVertexWeight, BoneMorph, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXHeaderRust, PMXIKLink, PMXMaterial, PMXMorph, PMXSphereMode, PMXTextureList, PMXToonMode, UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, PMXFrame, FrameInner, PMXRigid, PMXRigidForm, PMXRigidCalcMethod};
-    use std::path::Path;
-
-    fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
+fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
         let mut ctx = PMXHeaderRust {
             magic: "".to_string(),
             version: 0.0,
@@ -658,11 +658,84 @@ impl RigidLoader{
             calc_method
         });
         }
-        (bodies,JointLoader{ header:self.header , inner: self.inner })
+        (bodies, JointLoader { header: self.header, inner: self.inner })
     }
-
 }
-pub struct JointLoader{
-    header:PMXHeaderRust,
-    inner:BinaryReader
+
+pub struct JointLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
+}
+
+impl JointLoader {
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
+    }
+    pub fn read_joints(mut self) -> (Vec<PMXJoint>, Option<SoftBodyLoader>) {
+        let len = self.inner.read_i32();
+        let mut joints = Vec::with_capacity(len as usize);
+        for _ in 0..len {
+            joints.push(self.read_joint());
+        }
+        let next_loader = if self.header.version > 2.0 {
+            //this file contains softbody section
+            Some(SoftBodyLoader { header: self.header, inner: self.inner })
+        } else {
+            None
+        };
+        (joints, next_loader)
+    }
+    fn read_joint(&mut self) -> PMXJoint {
+        let name = self.inner.read_text_buf(self.header.encode);
+        let name_en = self.inner.read_text_buf(self.header.encode);
+        let raw_parameter = self.inner.read_pmx_joint_parameter_raw();
+        let joint_parameter = match raw_parameter.joint_type {
+            0 => PMXJointType::Spring6DOF {
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
+                position: raw_parameter.position,
+                rotation: raw_parameter.rotation,
+                move_limit_down: raw_parameter.move_limit_down,
+                move_limit_up: raw_parameter.move_limit_up,
+                rotation_limit_down: raw_parameter.rotation_limit_down,
+                rotation_limit_up: raw_parameter.rotation_limit_up,
+                spring_const_move: raw_parameter.spring_const_move,
+                spring_const_rotation: raw_parameter.spring_const_rotation,
+            },
+            1 => PMXJointType::_6DOF {
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
+                position: raw_parameter.position,
+                rotation: raw_parameter.rotation,
+                move_limit_down: raw_parameter.move_limit_down,
+                move_limit_up: raw_parameter.move_limit_up,
+                rotation_limit_down: raw_parameter.rotation_limit_down,
+                rotation_limit_up: raw_parameter.rotation_limit_up,
+            },
+            2 => PMXJointType::P2P {
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
+                position: raw_parameter.position,
+                rotation: raw_parameter.rotation,
+            },
+            3 | 4 | 5 | 6 => { unimplemented!("Im working for support these format conversion") }
+            _ => { unreachable!("Invalid joint type detected in joint loader") }
+        };
+        PMXJoint {
+            name,
+            name_en,
+            joint_type: joint_parameter,
+        }
+    }
+}
+
+pub struct SoftBodyLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
+}
+
+impl SoftBodyLoader {
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
+    }
 }

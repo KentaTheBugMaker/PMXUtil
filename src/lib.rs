@@ -30,30 +30,29 @@ pub mod pmx_types;
 mod test {
     use std::env;
 
-
-    use crate::pmx_loader::{MaterialsLoader, TexturesLoader, BonesLoader, MorphsLoader, PMXLoader, ModelInfoLoader, VerticesLoader, FacesLoader, FrameLoader};
-    use crate::pmx_writer::PMXWriter;
+    use crate::pmx_loader::{BonesLoader, FacesLoader, FrameLoader, MaterialsLoader, ModelInfoLoader, MorphsLoader, PMXLoader, TexturesLoader, VerticesLoader};
     use crate::pmx_types::pmx_types::PMXModelInfo;
+    use crate::pmx_writer::PMXWriter;
 
     //Perform Copy test
     #[test]
     fn copy_test(){
-        let from ="./from.pmx";
-        let to ="./to.pmx";
-        let mut writer =PMXWriter::begin_writer(to);
-        let mut copy_from=PMXLoader::open(from);
-        let (model_info,ns)=ModelInfoLoader::read_pmx_model_info(copy_from);
-        let (vertices,ns)=VerticesLoader::read_pmx_vertices(ns);
-        let (faces,ns)=FacesLoader::read_pmx_faces(ns);
-        let(textures,ns)=TexturesLoader::read_texture_list(ns);
-        let (materials,ns)=MaterialsLoader::read_pmx_materials(ns);
-        let(bones,ns)=BonesLoader::read_pmx_bones(ns);
-        let(morphs,ns)=MorphsLoader::read_pmx_morphs(ns);
-        let (frames,ns)=FrameLoader::read_frames(ns);
-        for frame in frames{
-            println!("{:#?}",frame)
+        let from = "./from.pmx";
+        let to = "./to.pmx";
+        let mut writer = PMXWriter::begin_writer(to);
+        let mut copy_from = PMXLoader::open(from);
+        let (model_info, ns) = copy_from.read_pmx_model_info();
+        let (vertices, ns) = ns.read_pmx_vertices();
+        let (faces, ns) = ns.read_pmx_faces();
+        let (textures, ns) = ns.read_texture_list();
+        let (materials, ns) = ns.read_pmx_materials();
+        let (bones, ns) = ns.read_pmx_bones();
+        let (morphs, ns) = ns.read_pmx_morphs();
+        let (frames, ns) = ns.read_frames();
+        for frame in frames {
+            println!("{:#?}", frame)
         }
-        writer.set_model_info(Some(&model_info.name),Some(&model_info.name_en),Some(&model_info.comment),Some(&model_info.comment_en));
+        writer.set_model_info(Some(&model_info.name), Some(&model_info.name_en), Some(&model_info.comment), Some(&model_info.comment_en));
         writer.add_vertices(&vertices);
         writer.add_faces(&faces);
         writer.add_textures(&textures.textures);
@@ -62,22 +61,22 @@ mod test {
         writer.add_morphs(&morphs);
         PMXWriter::write(writer);
 
-        let reader=PMXLoader::open(to);
-        let (model_info_cpy,ns)=ModelInfoLoader::read_pmx_model_info(reader);
-        let (vertices_cpy,ns)=VerticesLoader::read_pmx_vertices(ns);
-        let (faces_cpy,ns)=FacesLoader::read_pmx_faces(ns);
-        let(textures_cpy,ns)=TexturesLoader::read_texture_list(ns);
-        let (materials_cpy,ns)=MaterialsLoader::read_pmx_materials(ns);
-        let(bones_cpy,ns)=BonesLoader::read_pmx_bones(ns);
-        let(morphs_cpy,ns)=MorphsLoader::read_pmx_morphs(ns);
+        let reader = PMXLoader::open(to);
+        let (model_info_cpy, ns) = reader.read_pmx_model_info();
+        let (vertices_cpy, ns) = ns.read_pmx_vertices();
+        let (faces_cpy, ns) = ns.read_pmx_faces();
+        let (textures_cpy, ns) = ns.read_texture_list();
+        let (materials_cpy, ns) = ns.read_pmx_materials();
+        let (bones_cpy, ns) = ns.read_pmx_bones();
+        let (morphs_cpy, ns) = ns.read_pmx_morphs();
 
 
-        assert_eq!(model_info,model_info_cpy);
-        assert_eq!(vertices,vertices_cpy);
-        assert_eq!(faces,faces_cpy);
-        assert_eq!(textures,textures_cpy);
-        assert_eq!(materials,materials_cpy);
-        assert_eq!(bones,bones_cpy);
-        assert_eq!(morphs,morphs_cpy);
+        assert_eq!(model_info, model_info_cpy);
+        assert_eq!(vertices, vertices_cpy);
+        assert_eq!(faces, faces_cpy);
+        assert_eq!(textures, textures_cpy);
+        assert_eq!(materials, materials_cpy);
+        assert_eq!(bones, bones_cpy);
+        assert_eq!(morphs, morphs_cpy);
     }
 }
