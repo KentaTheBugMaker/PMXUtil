@@ -5,7 +5,7 @@ use std::path::Path;
 ///To avoid crash you can not return to previous loader (API protected)
 
 use crate::binary_reader::BinaryReader;
-use crate::pmx_types::pmx_types::{BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSphereMode, PMXTextureList, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph};
+use crate::pmx_types::pmx_types::{BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSphereMode, PMXTextureList, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph, PMXSoftBody, PMXSoftBodyForm, PMXSoftBodyAnchorRigid, PMXSoftBodyAeroModel};
 
 fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
         let mut ctx = PMXHeaderRust {
@@ -283,12 +283,12 @@ impl MaterialsLoader {
             specular: [0.0f32; 3],
             specular_factor: 0.0,
             ambient: [0.0f32; 3],
-            drawmode: 0,
+            draw_mode: 0,
             edge_color: [0.0f32; 4],
             edge_size: 0.0,
             texture_index: 0,
             sphere_mode_texture_index: 0,
-            spheremode: PMXSphereMode::None,
+            sphere_mode: PMXSphereMode::None,
             toon_mode: PMXToonMode::Separate,
             toon_texture_index: 0,
             memo: "".to_string(),
@@ -300,13 +300,13 @@ impl MaterialsLoader {
         ctx.specular = self.inner.read_vec3();
         ctx.specular_factor = self.inner.read_f32();
         ctx.ambient = self.inner.read_vec3();
-        ctx.drawmode = self.inner.read_u8();
+        ctx.draw_mode = self.inner.read_u8();
         ctx.edge_color = self.inner.read_vec4();
         ctx.edge_size = self.inner.read_f32();
         ctx.texture_index = self.inner.read_sized(s_texture_index).unwrap();
         ctx.sphere_mode_texture_index = self.inner.read_sized(s_texture_index).unwrap();
         let spmode = self.inner.read_u8();
-        ctx.spheremode = match spmode {
+        ctx.sphere_mode = match spmode {
             0 => PMXSphereMode::None,
             1 => PMXSphereMode::Mul,
             2 => PMXSphereMode::Add,
@@ -618,9 +618,9 @@ impl RigidLoader{
             let name=self.inner.read_text_buf(self.header.encode);
             let name_en=self.inner.read_text_buf(self.header.encode);
             let bone_index=self.inner.read_sized(self.header.s_bone_index).unwrap();
-            let group=self.inner.read_i8();
+            let group=self.inner.read_u8();
             let un_collision_group_flag=self.inner.read_u16();
-            let form=match self.inner.read_i8() {
+            let form=match self.inner.read_u8() {
                 0=>PMXRigidForm::Sphere,
                 1=>PMXRigidForm::Box,
                 2=>PMXRigidForm::Capsule,
@@ -634,7 +634,7 @@ impl RigidLoader{
             let rotation_resist=self.inner.read_f32();
             let repulsion=self.inner.read_f32();
             let friction=self.inner.read_f32();
-            let calc_method=match self.inner.read_i8(){
+            let calc_method=match self.inner.read_u8(){
                 0=>PMXRigidCalcMethod::Static,
                 1=>PMXRigidCalcMethod::Dynamic,
                 2=>PMXRigidCalcMethod::DynamicWithBonePosition,
@@ -737,5 +737,129 @@ pub struct SoftBodyLoader {
 impl SoftBodyLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
+    }
+    pub fn read_pmx_soft_bodies(mut self)->Vec<PMXSoftBody>{
+        let n_soft_bodies=self.inner.read_i32();
+        let mut soft_bodies =Vec::with_capacity(n_soft_bodies as usize);
+        for _ in 0..n_soft_bodies{
+            soft_bodies.push(self.read_soft_body())
+        }
+        soft_bodies
+    }
+    fn read_soft_body(&mut self)->PMXSoftBody{
+        let name=self.inner.read_text_buf(self.header.encode);
+        let name_en=self.inner.read_text_buf(self.header.encode);
+        let form =match self.inner.read_u8(){
+            0=>PMXSoftBodyForm::TriMesh,
+            1=>PMXSoftBodyForm::Rope,
+            _=>{panic!("Error invalid PMXSoftBodyForm ")}
+        };
+        let material_index=self.inner.read_sized(self.header.s_material_index).unwrap();
+        let group=self.inner.read_u8();
+        let un_collision_group_flag=self.inner.read_u16();
+        let bit_flag=self.inner.read_u8();
+        let b_link_create_distance=self.inner.read_i32();
+        let clusters=self.inner.read_i32();
+        let mass=self.inner.read_f32();
+        let collision_margin=self.inner.read_f32();
+        let aero_model=match self.inner.read_i32(){
+            0=>PMXSoftBodyAeroModel::VPoint,
+            1=>PMXSoftBodyAeroModel::VTwoSide,
+            2=>PMXSoftBodyAeroModel::VOneSided,
+            3=>PMXSoftBodyAeroModel::FTwoSided,
+            4=>PMXSoftBodyAeroModel::FOneSided,
+            _=>{panic!("Error invalid PMXSoftBodyAeromodel")}
+        };
+        //config
+        let vcf=self.inner.read_f32();
+        let dp=self.inner.read_f32();
+        let dg=self.inner.read_f32();
+        let lf=self.inner.read_f32();
+        let pr=self.inner.read_f32();
+        let vc=self.inner.read_f32();
+        let df=self.inner.read_f32();
+        let mt=self.inner.read_f32();
+        let chr=self.inner.read_f32();
+        let khr=self.inner.read_f32();
+        let shr=self.inner.read_f32();
+        let ahr=self.inner.read_f32();
+        //cluster
+        let srhr_cl=self.inner.read_f32();
+        let skhr_cl=self.inner.read_f32();
+        let sshr_cl=self.inner.read_f32();
+        let sr_splt_cl=self.inner.read_f32();
+        let sk_splt_cl=self.inner.read_f32();
+        let ss_splt_cl=self.inner.read_f32();
+        //iteration
+        let v_it=self.inner.read_i32();
+        let p_it=self.inner.read_i32();
+        let d_it=self.inner.read_i32();
+        let c_it=self.inner.read_i32();
+        //material
+        let lst=self.inner.read_f32();
+        let ast=self.inner.read_f32();
+        let vst=self.inner.read_f32();
+        let n_anchor_rigid=self.inner.read_i32();
+        let mut anchor_rigid=Vec::with_capacity(n_anchor_rigid as usize);
+        for _ in 0..n_anchor_rigid{
+            let rigid_index=self.inner.read_sized(self.header.s_rigid_body_index).unwrap();
+            let vertex_index=self.inner.read_vertex_index(self.header.s_vertex_index).unwrap();
+            let near_mode =match self.inner.read_i8(){
+                0=>true,
+                1=>false,
+                _=>panic!("Error detected PMXSoftBodyAnchorRigid near mode"),
+            };
+            anchor_rigid.push(PMXSoftBodyAnchorRigid{
+                rigid_index,
+                vertex_index,
+                near_mode
+            });
+        }
+        let n_pin_vertex=self.inner.read_i32();
+        let mut pin_vertex=Vec::with_capacity(n_pin_vertex as usize);
+        for _ in 0..n_pin_vertex{
+            pin_vertex.push(self.inner.read_vertex_index(self.header.s_vertex_index).unwrap())
+        }
+        PMXSoftBody{
+            name,
+            name_en,
+            form,
+            material_index,
+            group,
+            un_collision_group_flag,
+            bit_flag,
+            b_link_create_distance,
+            clusters,
+            mass,
+            collision_margin,
+            aero_model,
+            vcf,
+            dp,
+            dg,
+            lf,
+            pr,
+            vc,
+            df,
+            mt,
+            chr,
+            khr,
+            shr,
+            ahr,
+            srhr_cl,
+            skhr_cl,
+            sshr_cl,
+            sr_splt_cl,
+            sk_splt_cl,
+            ss_splt_cl,
+            v_it,
+            p_it,
+            d_it,
+            c_it,
+            lst,
+            ast,
+            vst,
+            anchor_rigid,
+            pin_vertex
+        }
     }
 }

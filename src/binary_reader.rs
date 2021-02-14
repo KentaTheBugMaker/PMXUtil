@@ -43,11 +43,11 @@ impl BinaryReader {
         }
     }
 
-    pub(crate) fn read_vertex_index(&mut self, n: u8) -> Option<u32> {
+    pub(crate) fn read_vertex_index(&mut self, n: u8) -> Option<i32> {
         match n {
-            1 => Some(self.read_u8() as u32),
-            2 => Some(self.read_u16() as u32),
-            4 => Some(self.read_i32() as u32),
+            1 => Some(self.read_u8() as i32),
+            2 => Some(self.read_u16() as i32),
+            4 => Some(self.read_i32()),
             _ => None,
         }
     }

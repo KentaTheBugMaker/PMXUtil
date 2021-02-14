@@ -47,11 +47,11 @@ pub mod binary_writer {
             self.write_vec(text.as_bytes());
         }
 
-        pub(crate) fn write_vertex_index(&mut self, size: u8, value: u32) {
+        pub(crate) fn write_vertex_index(&mut self, size: u8, value: i32) {
             match size {
                 1 => { self.write_u8(value as u8) }
                 2 => { self.write_u16(value as u16) }
-                4 => { self.write_u32(value) }
+                4 => { self.write_i32(value) }
                 _ => {}
             }
         }
@@ -75,13 +75,13 @@ pub mod binary_writer {
             self.write_vec3(material.specular);
             self.write_f32(material.specular_factor);
             self.write_vec3(material.ambient);
-            self.write_u8(material.drawmode);
+            self.write_u8(material.draw_mode);
             self.write_vec4(material.edge_color);
             self.write_f32(material.edge_size);
             self.write_sized(s_texture_index, material.texture_index);
             self.write_sized(s_texture_index, material.sphere_mode_texture_index);
 
-            let spmode = match material.spheremode {
+            let spmode = match material.sphere_mode {
                 PMXSphereMode::None => { 0u8 },
                 PMXSphereMode::Mul => { 1u8 },
                 PMXSphereMode::Add => { 2u8 },

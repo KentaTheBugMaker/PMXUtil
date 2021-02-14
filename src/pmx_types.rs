@@ -39,7 +39,7 @@ pub mod pmx_types {
     const MATERIAL_VERTEX_COLOR_MASK: u8 = 0x20;
     const MATERIAL_DRAW_POINT_MASK: u8 = 0x40;
     const MATERIAL_DRAW_LINE_MASK: u8 = 0x80;
-
+    /// PMX仕様.txt 156~173
     #[repr(packed)]
     pub struct PMXHeaderC {
         pub magic: [u8; 4],
@@ -71,6 +71,7 @@ pub mod pmx_types {
         Int,
     }
     /// these are pmx embedded comments and names
+    /// PMX仕様.txt 176~181
     #[derive(Debug,Eq, PartialEq,Clone)]
     pub struct PMXModelInfo {
         pub name: String,
@@ -78,7 +79,7 @@ pub mod pmx_types {
         pub comment: String,
         pub comment_en: String,
     }
-
+    ///PMX仕様.txt 190~197
     #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXVertexWeight {
         BDEF1 = 0x00,
@@ -89,6 +90,7 @@ pub mod pmx_types {
     }
     ///these value are must submitted to vertex shader
     /// but bone_indices bone_weights must submitted to physics engine
+    /// PMX仕様.txt 184~252
     #[derive(Debug,Clone, PartialEq)]
     pub struct PMXVertex {
         pub position: Vec3,
@@ -106,16 +108,18 @@ pub mod pmx_types {
 
     /*Represent Triangle*/
     /// represent one triangle
+    /// PMX仕様.txt 255~257
     #[derive(Copy, Clone,Eq, PartialEq,Debug)]
     pub struct PMXFace {
-        pub vertices: [u32; 3],
+        pub vertices: [i32; 3],
     }
     /// texture file name list
+    /// PMX仕様.txt 263~267
     #[derive(Debug,Eq,PartialEq)]
     pub struct PMXTextureList {
         pub textures: Vec<String>,
     }
-
+    ///PMX仕様.txt 286~288
     pub enum PMXDrawModeFlags {
         BothFace = 0x01,
         GroundShadow = 0x02,
@@ -126,7 +130,7 @@ pub mod pmx_types {
         DrawPoint = 0x40,
         DrawLine = 0x80,
     }
-
+    ///PMX仕様.txt 295
     #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXSphereMode {
         None = 0x00,
@@ -134,7 +138,7 @@ pub mod pmx_types {
         Add = 0x02,
         SubTexture = 0x03,
     }
-
+    ///PMX仕様.txt 297 ~ 303
     #[derive(Debug,Copy, Clone,Eq, PartialEq)]
     pub enum PMXToonMode {
         Separate = 0x00,
@@ -142,6 +146,7 @@ pub mod pmx_types {
         Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
     /// these values are must submitted to fragment or vertex shader by uniform or push_constant
+    ///PMX仕様.txt 276~310
     #[derive(Debug,Clone, PartialEq)]
     pub struct PMXMaterial {
         pub name: String,
@@ -150,18 +155,18 @@ pub mod pmx_types {
         pub specular: Vec3,
         pub specular_factor: f32,
         pub ambient: Vec3,
-        pub drawmode: u8,
+        pub draw_mode: u8,
         pub edge_color: Vec4,
         pub edge_size: f32,
         pub texture_index: i32,
         pub sphere_mode_texture_index: i32,
-        pub spheremode: PMXSphereMode,
+        pub sphere_mode: PMXSphereMode,
         pub toon_mode: PMXToonMode,
         pub toon_texture_index: i32,
         pub memo: String,
         pub num_face_vertices: i32,
     }
-
+///PMX仕様.txt 476~497
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXFrame{
        pub name:String,
@@ -174,7 +179,7 @@ pub mod pmx_types {
        pub target:u8,
        pub index:i32
     }
-
+///PMX仕様.txt 313 ~395
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXBone {
         pub name: String,
@@ -204,7 +209,7 @@ pub mod pmx_types {
         pub limit_min: Vec3,
         pub limit_max: Vec3,
     }
-
+///PMX仕様.txt 399~459
     #[derive(Debug,Clone,PartialEq)]
     pub struct PMXMorph {
         pub name: String,
@@ -272,7 +277,7 @@ pub mod pmx_types {
         pub name: String,
         pub name_en: String,
         pub bone_index: i32,
-        pub group: i8,
+        pub group: u8,
         pub un_collision_group_flag: u16,
         pub form: PMXRigidForm,
         pub size: Vec3,
@@ -306,7 +311,7 @@ pub mod pmx_types {
     /// This struct is fixed size so we can use read_bin!
     #[repr(packed)]
     pub(crate) struct PMXJointParameterRaw {
-        pub(crate) joint_type: i8,
+        pub(crate) joint_type: u8,
         pub(crate) a_rigid_index: i32,
         pub(crate) b_rigid_index: i32,
         pub(crate) position: Vec3,
@@ -393,6 +398,69 @@ pub mod pmx_types {
             target_velocity: f32,
             max_motor_impulse: f32,
         },
+    }
+    /// from PMXxUtil 0.5.0
+    pub struct PMXSoftBody{
+        pub name:String,
+        pub name_en:String,
+        pub form:PMXSoftBodyForm,//i8
+        pub material_index:i32,
+        pub group:u8,
+        pub un_collision_group_flag:u16,
+        pub bit_flag:u8,
+        pub b_link_create_distance:i32,
+        pub clusters:i32,
+        pub mass:f32,
+        pub collision_margin:f32,
+        pub aero_model:PMXSoftBodyAeroModel,//i32
+        ///config
+        pub vcf:f32,
+        pub dp:f32,
+        pub dg:f32,
+        pub lf:f32,
+        pub pr:f32,
+        pub vc:f32,
+        pub df:f32,
+        pub mt:f32,
+        pub chr:f32,
+        pub khr:f32,
+        pub shr:f32,
+        pub ahr:f32,
+        ///cluster
+        pub srhr_cl:f32,
+        pub skhr_cl:f32,
+        pub sshr_cl:f32,
+        pub sr_splt_cl:f32,
+        pub sk_splt_cl:f32,
+        pub ss_splt_cl:f32,
+        ///iteration
+        pub v_it:i32,
+        pub p_it:i32,
+        pub d_it:i32,
+        pub c_it:i32,
+        ///material
+        pub lst:f32,
+        pub ast:f32,
+        pub vst:f32,
+        pub anchor_rigid:Vec<PMXSoftBodyAnchorRigid>,
+        pub pin_vertex:Vec<i32>,
+    }
+    pub struct PMXSoftBodyAnchorRigid{
+        pub rigid_index:i32,
+        pub vertex_index:i32,
+        pub near_mode:bool
+    }
+
+    pub enum PMXSoftBodyForm{
+        TriMesh,
+        Rope,
+    }
+    pub enum PMXSoftBodyAeroModel{
+        VPoint,
+        VTwoSide,
+        VOneSided,
+        FTwoSided,
+        FOneSided,
     }
 
     impl Display for PMXVertex {
