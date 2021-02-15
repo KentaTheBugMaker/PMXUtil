@@ -262,7 +262,7 @@ impl TexturesLoader {
     /// Read relative path from current reading file
     /// in some case path contains /
     /// you should replace path separator to system path separator
-    /// Next self is MaterialsLoader
+    /// Next stage is MaterialsLoader
     pub fn read_texture_list(mut self) -> (PMXTextureList, MaterialsLoader) {
         let textures = self.inner.read_i32();
         let mut v = vec![];
@@ -286,7 +286,7 @@ impl MaterialsLoader {
     }
     ///Read material information name ambient diffuse specular etc parameters.
     /// for exact model rendering you should passed to shader and processed proper. 
-    ///Next self is BonesLoader
+    ///Next stage is BonesLoader
     pub fn read_pmx_materials(mut self) -> (Vec<PMXMaterial>, BonesLoader) {
         let mut materials= vec![] ;
         let counts = self.inner.read_i32();
@@ -366,7 +366,7 @@ impl BonesLoader {
     }
     /// read bone information parent child IK etc.
     /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok 
-    /// Next self is MorphsLoader
+    /// Next stage is MorphsLoader
     pub fn read_pmx_bones(mut self) -> (Vec<PMXBone>, MorphsLoader) {
         let mut bones= vec![] ;
         let count = self.inner.read_i32();
@@ -715,6 +715,9 @@ impl JointLoader {
         let name = self.inner.read_text_buf(self.header.encode);
         let name_en = self.inner.read_text_buf(self.header.encode);
         let raw_parameter = self.inner.read_pmx_joint_parameter_raw();
+        fn is_eq_f32(lhs:f32,rhs:f32)->bool{
+            (lhs-rhs).abs()< 0.01
+        }
         let joint_parameter = match raw_parameter.joint_type {
             0 => PMXJointType::Spring6DOF {
                 a_rigid_index: raw_parameter.a_rigid_index,
@@ -744,7 +747,44 @@ impl JointLoader {
                 position: raw_parameter.position,
                 rotation: raw_parameter.rotation,
             },
-            3 | 4 | 5 | 6 => { unimplemented!("Im working for support these format conversion") }
+            3=>PMXJointType::ConeTwist{
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
+                swing_span1: raw_parameter.rotation_limit_down[2],
+                swing_span2: raw_parameter.rotation_limit_down[1],
+                twist_span: raw_parameter.rotation_limit_down[0],
+                softness: raw_parameter.spring_const_move[0],
+                bias_factor: raw_parameter.spring_const_move[1],
+                relaxation_factor: raw_parameter.spring_const_move[2],
+                damping: raw_parameter.move_limit_down[0],
+                fix_thresh: raw_parameter.move_limit_up[0],
+                enable_motor: is_eq_f32(raw_parameter.move_limit_down[2],1.0),
+                max_motor_impulse: raw_parameter.move_limit_up[2],
+                motor_target_in_constraint_space: raw_parameter.spring_const_rotation
+            },
+            4=>PMXJointType::Slider{
+                lower_linear_limit: raw_parameter.move_limit_down[0],
+                upper_linear_limit: raw_parameter.move_limit_up[0],
+                lower_angle_limit: raw_parameter.rotation_limit_down[0],
+                upper_angle_limit: raw_parameter.rotation_limit_up[0],
+                power_linear_motor: is_eq_f32(raw_parameter.spring_const_move[0],1.0),
+                target_linear_motor_velocity: raw_parameter.spring_const_move[1],
+                max_linear_motor_force: raw_parameter.spring_const_move[2],
+                power_angler_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
+                target_angler_motor_velocity: raw_parameter.spring_const_rotation[1],
+                max_angler_motor_force: raw_parameter.spring_const_rotation[2]
+            },
+            5=>PMXJointType::Hinge {
+                low: raw_parameter.move_limit_down[0],
+                high: raw_parameter.move_limit_up[0],
+                softness: raw_parameter.spring_const_move[0],
+                bias_factor: raw_parameter.spring_const_move[1],
+                relaxation_factor: raw_parameter.spring_const_move[2],
+                enable_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
+                enable_angle_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
+                target_velocity: raw_parameter.spring_const_rotation[1],
+                max_motor_impulse: raw_parameter.spring_const_rotation[2]
+            },
             _ => { unreachable!("Invalid joint type detected in joint loader") }
         };
         PMXJoint {

@@ -501,13 +501,13 @@ pub mod pmx_types {
             }
             match self.weight_type {
                 PMXVertexWeight::BDEF1(b1) => {
-                    writeln!(f, "BDEF1:[index1:{} weight1:100]", b1);
+                    writeln!(f, "BDEF1:[index1:{} weight1:1.0]", b1);
                 }
                 PMXVertexWeight::BDEF2{ bone_index_1, bone_index_2, bone_weight_1 } => {
                     writeln!(
                         f,
-                        "BDEF2:[index1:{} index2:{} weight1{}]",
-                        bone_index_1, bone_index_2, bone_weight_1
+                        "BDEF2:[index1:{} index2:{} weight1:{} weight2:{}]",
+                        bone_index_1, bone_index_2, bone_weight_1,1.0-bone_weight_1
                     );
                 }
                 PMXVertexWeight::BDEF4{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
@@ -516,8 +516,8 @@ pub mod pmx_types {
                 PMXVertexWeight::SDEF{ bone_index_1, bone_index_2, bone_weight_1, sdef_c, sdef_r0, sdef_r1 } => {
                     writeln!(
                         f,
-                        "SDEF:[index1:{} index2:{} weight1{}]",
-                        bone_index_1, bone_index_2, bone_weight_1
+                        "SDEF:[index1:{} index2:{} weight1:{} weight2:{}]",
+                        bone_index_1, bone_index_2, bone_weight_1,1.0-bone_weight_1
                     );
                     writeln!(
                         f,
