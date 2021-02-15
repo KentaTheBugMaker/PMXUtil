@@ -6,6 +6,7 @@ use std::path::Path;
 
 use crate::binary_reader::BinaryReader;
 use crate::pmx_types::pmx_types::{BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSphereMode, PMXTextureList, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph, PMXSoftBody, PMXSoftBodyForm, PMXSoftBodyAnchorRigid, PMXSoftBodyAeroModel};
+use crate::pmx_types::pmx_types::PMXVertexWeight::BDEF4;
 
 fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
         let mut ctx = PMXHeaderRust {
@@ -122,13 +123,8 @@ impl PMXLoader {
                 norm: [0.0f32; 3],
                 uv: [0.0f32; 2],
                 add_uv: [[0.0f32; 4]; 4],
-                weight_type: PMXVertexWeight::BDEF1,
-                bone_indices: [-1i32; 4],
-                bone_weights: [0.0f32; 4],
-                sdef_c: [0.0f32; 3],
-                sdef_r0: [0.0f32; 3],
-                sdef_r1: [0.0f32; 3],
-                edge_mag: 1.0,
+                weight_type: PMXVertexWeight::BDEF1(-1),
+                edge_mag: 0.0
             };
             ctx.position = self.inner.read_vec3();
             ctx.norm = self.inner.read_vec3();
@@ -142,53 +138,83 @@ impl PMXLoader {
             }
             let weight_type = self.inner.read_u8();
             ctx.weight_type = match weight_type {
-                0 => PMXVertexWeight::BDEF1,
-                1 => PMXVertexWeight::BDEF2,
-                2 => PMXVertexWeight::BDEF4,
-                3 => PMXVertexWeight::SDEF,
-                4 => PMXVertexWeight::QDEF,
+                0 =>{
+                let index=self.inner.read_sized(size).unwrap();
+                    PMXVertexWeight::BDEF1(index)
+                }
+                
+                1 =>{
+                    let bone_index_1 = self.inner.read_sized(size).unwrap();
+                    let bone_index_2 = self.inner.read_sized(size).unwrap();
+                    let bone_weight_1 = self.inner.read_f32();
+                PMXVertexWeight::BDEF2 {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_weight_1
+                }
+                }
+                2 =>{
+                    let bone_index_1 = self.inner.read_sized(size).unwrap();
+                    let bone_index_2 = self.inner.read_sized(size).unwrap();
+                    let bone_index_3 = self.inner.read_sized(size).unwrap();
+                    let bone_index_4 = self.inner.read_sized(size).unwrap();
+                    let bone_weight_1 = self.inner.read_f32();
+                    let bone_weight_2 = self.inner.read_f32();
+                    let bone_weight_3 = self.inner.read_f32();
+                    let bone_weight_4 = self.inner.read_f32();
+                BDEF4{
+                    bone_index_1,
+                    bone_index_2,
+                    bone_index_3,
+                    bone_index_4,
+                    bone_weight_1,
+                    bone_weight_2,
+                    bone_weight_3,
+                    bone_weight_4
+                }
+                }
+
+                3 => {
+                    let bone_index_1 = self.inner.read_sized(size).unwrap();
+                    let bone_index_2 = self.inner.read_sized(size).unwrap();
+                    let bone_weight_1 = self.inner.read_f32();
+                    let sdef_c = self.inner.read_vec3();
+                    let sdef_r0 = self.inner.read_vec3();
+                    let sdef_r1 = self.inner.read_vec3();
+                    PMXVertexWeight::SDEF{
+                        bone_index_1,
+                        bone_index_2,
+                        bone_weight_1,
+                        sdef_c,
+                        sdef_r0,
+                        sdef_r1
+                    }
+                }
+                4 =>{
+                    let bone_index_1 = self.inner.read_sized(size).unwrap();
+                    let bone_index_2 = self.inner.read_sized(size).unwrap();
+                    let bone_index_3 = self.inner.read_sized(size).unwrap();
+                    let bone_index_4 = self.inner.read_sized(size).unwrap();
+                    let bone_weight_1 = self.inner.read_f32();
+                    let bone_weight_2 = self.inner.read_f32();
+                    let bone_weight_3 = self.inner.read_f32();
+                    let bone_weight_4 = self.inner.read_f32();
+                PMXVertexWeight::QDEF {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_index_3,
+                    bone_index_4,
+                    bone_weight_1,
+                    bone_weight_2,
+                    bone_weight_3,
+                    bone_weight_4
+                }
+                }
                 _ => {
                     panic!("Unknown Weight type:{}", weight_type);
                 }
             };
-            match ctx.weight_type {
-                PMXVertexWeight::BDEF1 => {
-                    ctx.bone_indices[0] = self.inner.read_sized(size).unwrap();
-                }
-                PMXVertexWeight::BDEF2 => {
-                    ctx.bone_indices[0] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[1] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_weights[0] = self.inner.read_f32();
-                }
-                PMXVertexWeight::BDEF4 => {
-                    ctx.bone_indices[0] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[1] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[2] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[3] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_weights[0] = self.inner.read_f32();
-                    ctx.bone_weights[1] = self.inner.read_f32();
-                    ctx.bone_weights[2] = self.inner.read_f32();
-                    ctx.bone_weights[3] = self.inner.read_f32();
-                }
-                PMXVertexWeight::SDEF => {
-                    ctx.bone_indices[0] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[1] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_weights[0] = self.inner.read_f32();
-                    ctx.sdef_c = self.inner.read_vec3();
-                    ctx.sdef_r0 = self.inner.read_vec3();
-                    ctx.sdef_r1 = self.inner.read_vec3();
-                }
-                PMXVertexWeight::QDEF => {
-                    ctx.bone_indices[0] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[1] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[2] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_indices[3] = self.inner.read_sized(size).unwrap();
-                    ctx.bone_weights[0] = self.inner.read_f32();
-                    ctx.bone_weights[1] = self.inner.read_f32();
-                    ctx.bone_weights[2] = self.inner.read_f32();
-                    ctx.bone_weights[3] = self.inner.read_f32();
-                }
-            }
+
             ctx.edge_mag = self.inner.read_f32();
             ctx
         }

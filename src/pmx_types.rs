@@ -80,13 +80,42 @@ pub mod pmx_types {
         pub comment_en: String,
     }
     ///PMX仕様.txt 190~197
-    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
+    #[derive(Debug,Copy, Clone,PartialEq)]
     pub enum PMXVertexWeight {
-        BDEF1 = 0x00,
-        BDEF2 = 0x01,
-        BDEF4 = 0x02,
-        SDEF = 0x03,
-        QDEF = 0x04,
+        BDEF1(i32),
+        BDEF2{
+            bone_index_1:i32,
+            bone_index_2:i32,
+            bone_weight_1:f32
+        },
+        BDEF4{
+            bone_index_1:i32,
+            bone_index_2:i32,
+            bone_index_3:i32,
+            bone_index_4:i32,
+            bone_weight_1:f32,
+            bone_weight_2:f32,
+            bone_weight_3:f32,
+            bone_weight_4:f32,
+        },
+        SDEF{
+            bone_index_1:i32,
+            bone_index_2:i32,
+            bone_weight_1:f32,
+            sdef_c:Vec3,
+            sdef_r0:Vec3,
+            sdef_r1:Vec3
+        },
+        QDEF{
+            bone_index_1:i32,
+            bone_index_2:i32,
+            bone_index_3:i32,
+            bone_index_4:i32,
+            bone_weight_1:f32,
+            bone_weight_2:f32,
+            bone_weight_3:f32,
+            bone_weight_4:f32,
+        },
     }
     ///these value are must submitted to vertex shader
     /// but bone_indices bone_weights must submitted to physics engine
@@ -98,11 +127,6 @@ pub mod pmx_types {
         pub uv: Vec2,
         pub add_uv: [Vec4; 4],
         pub weight_type: PMXVertexWeight,
-        pub bone_indices: [i32; 4],
-        pub bone_weights: [f32; 4],
-        pub sdef_c: Vec3,
-        pub sdef_r0: Vec3,
-        pub sdef_r1: Vec3,
         pub edge_mag: f32,
     }
 
@@ -476,33 +500,33 @@ pub mod pmx_types {
                 }
             }
             match self.weight_type {
-                PMXVertexWeight::BDEF1 => {
-                    writeln!(f, "BDEF1:[{}]", self.bone_indices[0]);
+                PMXVertexWeight::BDEF1(b1) => {
+                    writeln!(f, "BDEF1:[index1:{} weight1:100]", b1);
                 }
-                PMXVertexWeight::BDEF2 => {
+                PMXVertexWeight::BDEF2{ bone_index_1, bone_index_2, bone_weight_1 } => {
                     writeln!(
                         f,
                         "BDEF2:[index1:{} index2:{} weight1{}]",
-                        self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]
+                        bone_index_1, bone_index_2, bone_weight_1
                     );
                 }
-                PMXVertexWeight::BDEF4 => {
-                    writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", self.bone_indices[0], self.bone_indices[1], self.bone_indices[2], self.bone_indices[3], self.bone_weights[0], self.bone_weights[1], self.bone_weights[2], self.bone_weights[3]);
+                PMXVertexWeight::BDEF4{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                    writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
                 }
-                PMXVertexWeight::SDEF => {
+                PMXVertexWeight::SDEF{ bone_index_1, bone_index_2, bone_weight_1, sdef_c, sdef_r0, sdef_r1 } => {
                     writeln!(
                         f,
                         "SDEF:[index1:{} index2:{} weight1{}]",
-                        self.bone_indices[0], self.bone_indices[1], self.bone_weights[0]
+                        bone_index_1, bone_index_2, bone_weight_1
                     );
                     writeln!(
                         f,
                         "SDEF Specific Params:[ C:[{:?}] R0:[{:?}] R1:[{:?}] ]",
-                        self.sdef_c, self.sdef_r0, self.sdef_r1
+                        sdef_c, sdef_r0, sdef_r1
                     );
                 }
-                PMXVertexWeight::QDEF => {
-                    writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", self.bone_indices[0], self.bone_indices[1], self.bone_indices[2], self.bone_indices[3], self.bone_weights[0], self.bone_weights[1], self.bone_weights[2], self.bone_weights[3]);
+                PMXVertexWeight::QDEF{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                    writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
                 }
             }
             writeln!(f, "edgeMagnifier:{}", self.edge_mag);

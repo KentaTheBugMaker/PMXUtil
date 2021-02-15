@@ -11,12 +11,16 @@
   4. Parse Material Information
   5. Parse Bone Information
   6. Parse Morph Information
-  7. Write PMX 2.0 header
-  8. Write Model info
-  9. Write vertices
- 10. Write Materials
- 11. Write Bone
- 12 Write Morph
+  7. Parse Frame Information
+  8. Parse Rigid Information
+  9. parse Joint Information
+  10. Parse SoftBody Information   
+  11. Write PMX 2.0 header
+  12. Write Model info 
+  13. Write vertices
+  14. Write Materials
+  15. Write Bone
+  16, Write Morph
      
 ### WIP
   1. Implement Display trait

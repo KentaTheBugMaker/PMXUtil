@@ -111,49 +111,49 @@ pub mod binary_writer {
             }
 
             let weight_type = match vertex.weight_type {
-                PMXVertexWeight::BDEF1 => { 0 },
-                PMXVertexWeight::BDEF2 => { 1 },
-                PMXVertexWeight::BDEF4 => { 2 },
-                PMXVertexWeight::SDEF => { 3 },
-                PMXVertexWeight::QDEF => { 4 },
+                PMXVertexWeight::BDEF1(_) => { 0 },
+                PMXVertexWeight::BDEF2{..} => { 1 },
+                PMXVertexWeight::BDEF4{..} => { 2 },
+                PMXVertexWeight::SDEF{..} => { 3 },
+                PMXVertexWeight::QDEF{..} => { 4 },
             };
             self.write_u8(weight_type);
             match vertex.weight_type {
-                PMXVertexWeight::BDEF1 => {
-                    self.write_sized(s_bone_index, vertex.bone_indices[0]);
+                PMXVertexWeight::BDEF1(index) => {
+                    self.write_sized(s_bone_index, index);
                 },
-                PMXVertexWeight::BDEF2 => {
-                    self.write_sized(s_bone_index, vertex.bone_indices[0]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[1]);
-                    self.write_f32(vertex.bone_weights[0]);
+                PMXVertexWeight::BDEF2{ bone_index_1, bone_index_2, bone_weight_1 } => {
+                    self.write_sized(s_bone_index, bone_index_1);
+                    self.write_sized(s_bone_index, bone_index_2);
+                    self.write_f32(bone_weight_1);
                 },
-                PMXVertexWeight::BDEF4 => {
-                    self.write_sized(s_bone_index, vertex.bone_indices[0]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[1]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[2]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[3]);
-                    self.write_f32(vertex.bone_weights[0]);
-                    self.write_f32(vertex.bone_weights[1]);
-                    self.write_f32(vertex.bone_weights[2]);
-                    self.write_f32(vertex.bone_weights[3]);
+                PMXVertexWeight::BDEF4{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                    self.write_sized(s_bone_index, bone_index_1);
+                    self.write_sized(s_bone_index, bone_index_2);
+                    self.write_sized(s_bone_index, bone_index_3);
+                    self.write_sized(s_bone_index, bone_index_4);
+                    self.write_f32(bone_weight_1);
+                    self.write_f32(bone_weight_2);
+                    self.write_f32(bone_weight_3);
+                    self.write_f32(bone_weight_4);
                 },
-                PMXVertexWeight::SDEF => {
-                    self.write_sized(s_bone_index, vertex.bone_indices[0]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[1]);
-                    self.write_f32(vertex.bone_weights[0]);
-                    self.write_vec3(vertex.sdef_c);
-                    self.write_vec3(vertex.sdef_r0);
-                    self.write_vec3(vertex.sdef_r1);
+                PMXVertexWeight::SDEF{ bone_index_1, bone_index_2, bone_weight_1, sdef_c, sdef_r0, sdef_r1 } => {
+                    self.write_sized(s_bone_index, bone_index_1);
+                    self.write_sized(s_bone_index, bone_index_2);
+                    self.write_f32(bone_weight_1);
+                    self.write_vec3(sdef_c);
+                    self.write_vec3(sdef_r0);
+                    self.write_vec3(sdef_r1);
                 },
-                PMXVertexWeight::QDEF => {
-                    self.write_sized(s_bone_index, vertex.bone_indices[0]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[1]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[2]);
-                    self.write_sized(s_bone_index, vertex.bone_indices[3]);
-                    self.write_f32(vertex.bone_weights[0]);
-                    self.write_f32(vertex.bone_weights[1]);
-                    self.write_f32(vertex.bone_weights[2]);
-                    self.write_f32(vertex.bone_weights[3]);
+                PMXVertexWeight::QDEF{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                    self.write_sized(s_bone_index, bone_index_1);
+                    self.write_sized(s_bone_index, bone_index_2);
+                    self.write_sized(s_bone_index, bone_index_3);
+                    self.write_sized(s_bone_index, bone_index_4);
+                    self.write_f32(bone_weight_1);
+                    self.write_f32(bone_weight_2);
+                    self.write_f32(bone_weight_3);
+                    self.write_f32(bone_weight_4);
                 },
             }
 
