@@ -28,12 +28,9 @@ pub mod pmx_types;
 
 #[cfg(test)]
 mod test {
-    
 
-    use crate::pmx_loader::{
-        PMXLoader,
-    };
-    
+    use crate::pmx_loader::PMXLoader;
+
     use crate::pmx_writer::PMXWriter;
 
     //Perform Copy test

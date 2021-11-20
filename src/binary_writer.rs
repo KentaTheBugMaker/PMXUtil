@@ -354,7 +354,7 @@ pub mod binary_writer {
             self.write_i32(frame.inners.len() as i32);
             for inner in frame.inners {
                 self.write_u8(inner.target);
-                if inner.target >1 {
+                if inner.target > 1 {
                     panic!("A invalid pmx frame detected");
                 }
                 if inner.target == 0 {
@@ -397,13 +397,13 @@ pub mod binary_writer {
         pub(crate) fn write_pmx_joint(&mut self, s_rigid_index: u8, joint: PMXJoint) {
             self.write_text_buf(&joint.name);
             self.write_text_buf(&joint.name_en);
-            let kind = match joint.joint_type{
-                PMXJointType::Spring6DOF { .. } => {0}
-                PMXJointType::_6DOF { .. } => {1}
-                PMXJointType::P2P { .. } => {2}
-                PMXJointType::ConeTwist { .. } => {3}
-                PMXJointType::Slider { .. } => {4}
-                PMXJointType::Hinge { .. } => {5}
+            let kind = match joint.joint_type {
+                PMXJointType::Spring6DOF { .. } => 0,
+                PMXJointType::_6DOF { .. } => 1,
+                PMXJointType::P2P { .. } => 2,
+                PMXJointType::ConeTwist { .. } => 3,
+                PMXJointType::Slider { .. } => 4,
+                PMXJointType::Hinge { .. } => 5,
             };
             self.write_u8(kind);
             match joint.joint_type {

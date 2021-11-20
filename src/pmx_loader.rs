@@ -5,7 +5,16 @@ use std::path::Path;
 ///To avoid crash you can not return to previous loader (API protected)
 use crate::binary_reader::BinaryReader;
 use crate::pmx_types::PMXVertexWeight::BDEF4;
-use crate::pmx_types::{BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyAnchorRigid, PMXSoftBodyForm, PMXSphereModeRaw, PMXTextureList, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, PMXJointParameterRaw};
+use crate::pmx_types::{
+    BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
+    PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointParameterRaw, PMXJointType,
+    PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody,
+    PMXSoftBodyAeroModel, PMXSoftBodyAnchorRigid, PMXSoftBodyForm, PMXSphereModeRaw,
+    PMXTextureList, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
+    BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
+    BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
+    BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
+};
 
 fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
     let mut ctx = PMXHeaderRust {
@@ -737,11 +746,16 @@ impl JointLoader {
         let name = self.inner.read_text_buf(self.header.encode);
         let name_en = self.inner.read_text_buf(self.header.encode);
         let raw_parameter = {
-
-            PMXJointParameterRaw{
+            PMXJointParameterRaw {
                 joint_type: self.inner.read_u8(),
-                a_rigid_index: self.inner.read_sized(self.header.s_rigid_body_index).unwrap(),
-                b_rigid_index: self.inner.read_sized(self.header.s_rigid_body_index).unwrap(),
+                a_rigid_index: self
+                    .inner
+                    .read_sized(self.header.s_rigid_body_index)
+                    .unwrap(),
+                b_rigid_index: self
+                    .inner
+                    .read_sized(self.header.s_rigid_body_index)
+                    .unwrap(),
                 position: self.inner.read_vec3(),
                 rotation: self.inner.read_vec3(),
                 move_limit_down: self.inner.read_vec3(),
@@ -749,7 +763,7 @@ impl JointLoader {
                 rotation_limit_down: self.inner.read_vec3(),
                 rotation_limit_up: self.inner.read_vec3(),
                 spring_const_move: self.inner.read_vec3(),
-                spring_const_rotation: self.inner.read_vec3()
+                spring_const_rotation: self.inner.read_vec3(),
             }
         };
         fn is_eq_f32(lhs: f32, rhs: f32) -> bool {

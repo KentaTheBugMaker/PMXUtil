@@ -1,4 +1,3 @@
-
 use std::fmt::{Display, Formatter};
 
 pub type Vec2 = [f32; 2];

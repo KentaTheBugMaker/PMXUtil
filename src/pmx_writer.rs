@@ -144,11 +144,11 @@ impl PMXWriter {
         let version = if ext_2_1 { 2.1 } else { 2.0 };
         let length = 8u8;
         let s_vertex_index = require_bytes(data_set.vertices.len());
-        let s_texture_index =require_bytes(data_set.textures.len());
+        let s_texture_index = require_bytes(data_set.textures.len());
         let s_material_index = require_bytes(data_set.materials.len());
-        let s_bone_index =require_bytes_signed(data_set.bones.len());
+        let s_bone_index = require_bytes_signed(data_set.bones.len());
         let s_morph_index = require_bytes(data_set.morphs.len());
-        let s_rigid_body_index =require_bytes(data_set.rigid_bodies.len());
+        let s_rigid_body_index = require_bytes(data_set.rigid_bodies.len());
         let parameters = [
             0x01u8,
             data_set.additional_uvs.unwrap_or(0),
