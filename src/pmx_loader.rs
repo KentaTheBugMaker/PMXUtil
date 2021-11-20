@@ -3,46 +3,54 @@ use std::path::Path;
 ///Loader for pmx files
 ///The first stage loader is PMXLoader
 ///To avoid crash you can not return to previous loader (API protected)
-
 use crate::binary_reader::BinaryReader;
-use crate::pmx_types::pmx_types::{BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK, BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK, BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK, BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace, PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSphereMode, PMXTextureList, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph, PMXSoftBody, PMXSoftBodyForm, PMXSoftBodyAnchorRigid, PMXSoftBodyAeroModel};
 use crate::pmx_types::pmx_types::PMXVertexWeight::BDEF4;
+use crate::pmx_types::pmx_types::{
+    BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
+    PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial,
+    PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody,
+    PMXSoftBodyAeroModel, PMXSoftBodyAnchorRigid, PMXSoftBodyForm, PMXSphereModeRaw,
+    PMXTextureList, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
+    BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
+    BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
+    BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
+};
 
 fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
-        let mut ctx = PMXHeaderRust {
-            magic: "".to_string(),
-            version: 0.0,
-            length: 0,
-            encode: Encode::UTF8,
-            additional_uv: 0,
-            s_vertex_index: 0,
-            s_texture_index: 0,
-            s_material_index: 0,
-            s_bone_index: 0,
-            s_morph_index: 0,
-            s_rigid_body_index: 0,
-        };
-        ctx.magic = String::from_utf8_lossy(&header.magic).to_string();
-        ctx.version = header.version;
-        ctx.length = header.length;
-        ctx.encode = match header.config[0] {
-            1 => Encode::UTF8,
-            0 => Encode::Utf16Le,
-            _ => panic!("Unknown Text Encoding"),
-        };
-        ctx.additional_uv = header.config[1];
-        ctx.s_vertex_index = header.config[2];
-        ctx.s_texture_index = header.config[3];
-        ctx.s_material_index = header.config[4];
-        ctx.s_bone_index = header.config[5];
-        ctx.s_morph_index = header.config[6];
-        ctx.s_rigid_body_index = header.config[7];
-        ctx
-    }
+    let mut ctx = PMXHeaderRust {
+        magic: "".to_string(),
+        version: 0.0,
+        length: 0,
+        encode: Encode::UTF8,
+        additional_uv: 0,
+        s_vertex_index: 0,
+        s_texture_index: 0,
+        s_material_index: 0,
+        s_bone_index: 0,
+        s_morph_index: 0,
+        s_rigid_body_index: 0,
+    };
+    ctx.magic = String::from_utf8_lossy(&header.magic).to_string();
+    ctx.version = header.version;
+    ctx.length = header.length;
+    ctx.encode = match header.config[0] {
+        1 => Encode::UTF8,
+        0 => Encode::Utf16Le,
+        _ => panic!("Unknown Text Encoding"),
+    };
+    ctx.additional_uv = header.config[1];
+    ctx.s_vertex_index = header.config[2];
+    ctx.s_texture_index = header.config[3];
+    ctx.s_material_index = header.config[4];
+    ctx.s_bone_index = header.config[5];
+    ctx.s_morph_index = header.config[6];
+    ctx.s_rigid_body_index = header.config[7];
+    ctx
+}
 
-    pub struct PMXLoader {
-        header: PMXHeaderRust,
-    }
+pub struct PMXLoader {
+    header: PMXHeaderRust,
+}
 impl PMXLoader {
     ///```rust
     /// let modelinfo_loader=PMXLoader::open("/path/to/pmxfile");
@@ -50,119 +58,119 @@ impl PMXLoader {
     /// let (vertices,faces_loader)=vertices_loader.read_pmx_vertices();
     ///```
     /// Start pmx loading . Return  next stage and you can not back to previous stage
-        pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
-            let mut inner = BinaryReader::open(path).unwrap();
-            let header = inner.read_PMXHeader_raw();
-            let header_rs = transform_header_c2r(header);
-            ModelInfoLoader {
-                header: header_rs,
-                inner,
-            }
+    pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
+        let mut inner = BinaryReader::open(path).unwrap();
+        let header = inner.read_PMXHeader_raw();
+        let header_rs = transform_header_c2r(header);
+        ModelInfoLoader {
+            header: header_rs,
+            inner,
         }
+    }
     /// Get Header Information
-        pub fn get_header(&self) -> PMXHeaderRust {
-            self.header.clone()
-        }
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
     }
-    pub struct ModelInfoLoader {
-        header: PMXHeaderRust,
-        inner: BinaryReader,
+}
+pub struct ModelInfoLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
+}
+impl ModelInfoLoader {
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
     }
-    impl ModelInfoLoader {
-        pub fn get_header(&self) -> PMXHeaderRust {
-            self.header.clone()
-        }
-        /// Read model information name , international name, comment , and international comment.
-        /// Next self is VerticesLoader .
-        pub fn read_pmx_model_info(mut self) -> (PMXModelInfo, VerticesLoader) {
-            let mut ctx = PMXModelInfo {
-                name: "".to_string(),
-                name_en: "".to_string(),
-                comment: "".to_string(),
-                comment_en: "".to_string(),
-            };
-            let enc = self.header.encode;
-            ctx.name = self.inner.read_text_buf(enc);
-            ctx.name_en = self.inner.read_text_buf(enc);
-            ctx.comment = self.inner.read_text_buf(enc);
-            ctx.comment_en = self.inner.read_text_buf(enc);
-            let verticesloader = VerticesLoader {
-                header: self.header,
-                inner: self.inner,
-            };
-            (ctx, verticesloader)
-        }
+    /// Read model information name , international name, comment , and international comment.
+    /// Next self is VerticesLoader .
+    pub fn read_pmx_model_info(mut self) -> (PMXModelInfo, VerticesLoader) {
+        let mut ctx = PMXModelInfo {
+            name: "".to_string(),
+            name_en: "".to_string(),
+            comment: "".to_string(),
+            comment_en: "".to_string(),
+        };
+        let enc = self.header.encode;
+        ctx.name = self.inner.read_text_buf(enc);
+        ctx.name_en = self.inner.read_text_buf(enc);
+        ctx.comment = self.inner.read_text_buf(enc);
+        ctx.comment_en = self.inner.read_text_buf(enc);
+        let verticesloader = VerticesLoader {
+            header: self.header,
+            inner: self.inner,
+        };
+        (ctx, verticesloader)
     }
-    pub struct VerticesLoader {
-        header: PMXHeaderRust,
-        inner: BinaryReader,
+}
+pub struct VerticesLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
+}
+impl VerticesLoader {
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
     }
-    impl VerticesLoader {
-        pub fn get_header(&self) -> PMXHeaderRust {
-            self.header.clone()
+    /// Read vertices position normal uv(texture coord ) etc.
+    /// Next self is FacesLoader
+    pub fn read_pmx_vertices(mut self) -> (Vec<PMXVertex>, FacesLoader) {
+        let verts = self.inner.read_i32();
+        let mut v = Vec::with_capacity(verts as usize);
+        for _ in 0..verts {
+            v.push(self.read_pmx_vertex());
         }
-        /// Read vertices position normal uv(texture coord ) etc.
-        /// Next self is FacesLoader
-        pub fn read_pmx_vertices(mut self) -> (Vec<PMXVertex>, FacesLoader) {
-            let verts = self.inner.read_i32();
-            let mut v = Vec::with_capacity(verts as usize);
-            for _ in 0..verts {
-                v.push(self.read_pmx_vertex());
-            }
-            assert_eq!(verts as usize, v.len());
-            let faceloader = FacesLoader {
-                header: self.header,
-                inner: self.inner,
-            };
-            (v, faceloader)
-        }
+        assert_eq!(verts as usize, v.len());
+        let faceloader = FacesLoader {
+            header: self.header,
+            inner: self.inner,
+        };
+        (v, faceloader)
+    }
 
-        fn read_pmx_vertex(&mut self) -> PMXVertex {
-            let mut ctx = PMXVertex {
-                position: [0.0f32; 3],
-                norm: [0.0f32; 3],
-                uv: [0.0f32; 2],
-                add_uv: [[0.0f32; 4]; 4],
-                weight_type: PMXVertexWeight::BDEF1(-1),
-                edge_mag: 0.0
-            };
-            ctx.position = self.inner.read_vec3();
-            ctx.norm = self.inner.read_vec3();
-            ctx.uv = self.inner.read_vec2();
-            let additional_uv = self.header.additional_uv as usize;
-            let size = self.header.s_bone_index;
-            if additional_uv > 0 {
-                for i in 0..additional_uv {
-                    ctx.add_uv[i] = self.inner.read_vec4();
-                }
+    fn read_pmx_vertex(&mut self) -> PMXVertex {
+        let mut ctx = PMXVertex {
+            position: [0.0f32; 3],
+            norm: [0.0f32; 3],
+            uv: [0.0f32; 2],
+            add_uv: [[0.0f32; 4]; 4],
+            weight_type: PMXVertexWeight::BDEF1(-1),
+            edge_mag: 0.0,
+        };
+        ctx.position = self.inner.read_vec3();
+        ctx.norm = self.inner.read_vec3();
+        ctx.uv = self.inner.read_vec2();
+        let additional_uv = self.header.additional_uv as usize;
+        let size = self.header.s_bone_index;
+        if additional_uv > 0 {
+            for i in 0..additional_uv {
+                ctx.add_uv[i] = self.inner.read_vec4();
             }
-            let weight_type = self.inner.read_u8();
-            ctx.weight_type = match weight_type {
-                0 =>{
-                let index=self.inner.read_sized(size).unwrap();
-                    PMXVertexWeight::BDEF1(index)
-                }
-                
-                1 =>{
-                    let bone_index_1 = self.inner.read_sized(size).unwrap();
-                    let bone_index_2 = self.inner.read_sized(size).unwrap();
-                    let bone_weight_1 = self.inner.read_f32();
+        }
+        let weight_type = self.inner.read_u8();
+        ctx.weight_type = match weight_type {
+            0 => {
+                let index = self.inner.read_sized(size).unwrap();
+                PMXVertexWeight::BDEF1(index)
+            }
+
+            1 => {
+                let bone_index_1 = self.inner.read_sized(size).unwrap();
+                let bone_index_2 = self.inner.read_sized(size).unwrap();
+                let bone_weight_1 = self.inner.read_f32();
                 PMXVertexWeight::BDEF2 {
                     bone_index_1,
                     bone_index_2,
-                    bone_weight_1
+                    bone_weight_1,
                 }
-                }
-                2 =>{
-                    let bone_index_1 = self.inner.read_sized(size).unwrap();
-                    let bone_index_2 = self.inner.read_sized(size).unwrap();
-                    let bone_index_3 = self.inner.read_sized(size).unwrap();
-                    let bone_index_4 = self.inner.read_sized(size).unwrap();
-                    let bone_weight_1 = self.inner.read_f32();
-                    let bone_weight_2 = self.inner.read_f32();
-                    let bone_weight_3 = self.inner.read_f32();
-                    let bone_weight_4 = self.inner.read_f32();
-                BDEF4{
+            }
+            2 => {
+                let bone_index_1 = self.inner.read_sized(size).unwrap();
+                let bone_index_2 = self.inner.read_sized(size).unwrap();
+                let bone_index_3 = self.inner.read_sized(size).unwrap();
+                let bone_index_4 = self.inner.read_sized(size).unwrap();
+                let bone_weight_1 = self.inner.read_f32();
+                let bone_weight_2 = self.inner.read_f32();
+                let bone_weight_3 = self.inner.read_f32();
+                let bone_weight_4 = self.inner.read_f32();
+                BDEF4 {
                     bone_index_1,
                     bone_index_2,
                     bone_index_3,
@@ -170,35 +178,35 @@ impl PMXLoader {
                     bone_weight_1,
                     bone_weight_2,
                     bone_weight_3,
-                    bone_weight_4
+                    bone_weight_4,
                 }
-                }
+            }
 
-                3 => {
-                    let bone_index_1 = self.inner.read_sized(size).unwrap();
-                    let bone_index_2 = self.inner.read_sized(size).unwrap();
-                    let bone_weight_1 = self.inner.read_f32();
-                    let sdef_c = self.inner.read_vec3();
-                    let sdef_r0 = self.inner.read_vec3();
-                    let sdef_r1 = self.inner.read_vec3();
-                    PMXVertexWeight::SDEF{
-                        bone_index_1,
-                        bone_index_2,
-                        bone_weight_1,
-                        sdef_c,
-                        sdef_r0,
-                        sdef_r1
-                    }
+            3 => {
+                let bone_index_1 = self.inner.read_sized(size).unwrap();
+                let bone_index_2 = self.inner.read_sized(size).unwrap();
+                let bone_weight_1 = self.inner.read_f32();
+                let sdef_c = self.inner.read_vec3();
+                let sdef_r0 = self.inner.read_vec3();
+                let sdef_r1 = self.inner.read_vec3();
+                PMXVertexWeight::SDEF {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_weight_1,
+                    sdef_c,
+                    sdef_r0,
+                    sdef_r1,
                 }
-                4 =>{
-                    let bone_index_1 = self.inner.read_sized(size).unwrap();
-                    let bone_index_2 = self.inner.read_sized(size).unwrap();
-                    let bone_index_3 = self.inner.read_sized(size).unwrap();
-                    let bone_index_4 = self.inner.read_sized(size).unwrap();
-                    let bone_weight_1 = self.inner.read_f32();
-                    let bone_weight_2 = self.inner.read_f32();
-                    let bone_weight_3 = self.inner.read_f32();
-                    let bone_weight_4 = self.inner.read_f32();
+            }
+            4 => {
+                let bone_index_1 = self.inner.read_sized(size).unwrap();
+                let bone_index_2 = self.inner.read_sized(size).unwrap();
+                let bone_index_3 = self.inner.read_sized(size).unwrap();
+                let bone_index_4 = self.inner.read_sized(size).unwrap();
+                let bone_weight_1 = self.inner.read_f32();
+                let bone_weight_2 = self.inner.read_f32();
+                let bone_weight_3 = self.inner.read_f32();
+                let bone_weight_4 = self.inner.read_f32();
                 PMXVertexWeight::QDEF {
                     bone_index_1,
                     bone_index_2,
@@ -207,49 +215,49 @@ impl PMXLoader {
                     bone_weight_1,
                     bone_weight_2,
                     bone_weight_3,
-                    bone_weight_4
+                    bone_weight_4,
                 }
-                }
-                _ => {
-                    panic!("Unknown Weight type:{}", weight_type);
-                }
-            };
-
-            ctx.edge_mag = self.inner.read_f32();
-            ctx
-        }
-    }
-    pub struct FacesLoader {
-        header: PMXHeaderRust,
-        inner: BinaryReader,
-    }
-    impl FacesLoader {
-        pub fn get_header(&self) -> PMXHeaderRust {
-            self.header.clone()
-        }
-        /// Read faces similer to index buffer 
-        /// Next self is TexturesLoader
-        pub fn read_pmx_faces(mut self) -> (Vec<PMXFace>, TexturesLoader) {
-            let mut v=vec![];
-            let faces = self.inner.read_i32();
-            let s_vertex_index = self.header.s_vertex_index;
-            let faces = faces / 3;
-            for _ in 0..faces {
-                let v0 = self.inner.read_vertex_index(s_vertex_index).unwrap();
-                let v1 = self.inner.read_vertex_index(s_vertex_index).unwrap();
-                let v2 = self.inner.read_vertex_index(s_vertex_index).unwrap();
-                v.push(PMXFace {
-                    vertices: [v0, v1, v2],
-                });
             }
-            assert_eq!(v.len(), faces as usize);
-            let next_self = TexturesLoader {
-                header: self.header,
-                inner: self.inner,
-            };
-            (v, next_self)
-        }
+            _ => {
+                panic!("Unknown Weight type:{}", weight_type);
+            }
+        };
+
+        ctx.edge_mag = self.inner.read_f32();
+        ctx
     }
+}
+pub struct FacesLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
+}
+impl FacesLoader {
+    pub fn get_header(&self) -> PMXHeaderRust {
+        self.header.clone()
+    }
+    /// Read faces similer to index buffer
+    /// Next self is TexturesLoader
+    pub fn read_pmx_faces(mut self) -> (Vec<PMXFace>, TexturesLoader) {
+        let mut v = vec![];
+        let faces = self.inner.read_i32();
+        let s_vertex_index = self.header.s_vertex_index;
+        let faces = faces / 3;
+        for _ in 0..faces {
+            let v0 = self.inner.read_vertex_index(s_vertex_index).unwrap();
+            let v1 = self.inner.read_vertex_index(s_vertex_index).unwrap();
+            let v2 = self.inner.read_vertex_index(s_vertex_index).unwrap();
+            v.push(PMXFace {
+                vertices: [v0, v1, v2],
+            });
+        }
+        assert_eq!(v.len(), faces as usize);
+        let next_self = TexturesLoader {
+            header: self.header,
+            inner: self.inner,
+        };
+        (v, next_self)
+    }
+}
 
 pub struct TexturesLoader {
     header: PMXHeaderRust,
@@ -285,10 +293,10 @@ impl MaterialsLoader {
         self.header.clone()
     }
     ///Read material information name ambient diffuse specular etc parameters.
-    /// for exact model rendering you should passed to shader and processed proper. 
+    /// for exact model rendering you should passed to shader and processed proper.
     ///Next stage is BonesLoader
     pub fn read_pmx_materials(mut self) -> (Vec<PMXMaterial>, BonesLoader) {
-        let mut materials= vec![] ;
+        let mut materials = vec![];
         let counts = self.inner.read_i32();
         for _ in 0..counts {
             let material = self.read_pmx_material();
@@ -314,8 +322,8 @@ impl MaterialsLoader {
             edge_size: 0.0,
             texture_index: 0,
             sphere_mode_texture_index: 0,
-            sphere_mode: PMXSphereMode::None,
-            toon_mode: PMXToonMode::Separate,
+            sphere_mode: PMXSphereModeRaw::None,
+            toon_mode: PMXToonModeRaw::Separate,
             toon_texture_index: 0,
             memo: "".to_string(),
             num_face_vertices: 0,
@@ -333,23 +341,23 @@ impl MaterialsLoader {
         ctx.sphere_mode_texture_index = self.inner.read_sized(s_texture_index).unwrap();
         let spmode = self.inner.read_u8();
         ctx.sphere_mode = match spmode {
-            0 => PMXSphereMode::None,
-            1 => PMXSphereMode::Mul,
-            2 => PMXSphereMode::Add,
-            3 => PMXSphereMode::SubTexture,
+            0 => PMXSphereModeRaw::None,
+            1 => PMXSphereModeRaw::Mul,
+            2 => PMXSphereModeRaw::Add,
+            3 => PMXSphereModeRaw::SubTexture,
             _ => {
                 panic!("Error Unknown SphereMode:{}", spmode);
             }
         };
         let toonmode = self.inner.read_u8();
         ctx.toon_mode = match toonmode {
-            0 => PMXToonMode::Separate,
-            1 => PMXToonMode::Common,
+            0 => PMXToonModeRaw::Separate,
+            1 => PMXToonModeRaw::Common,
             _ => panic!("Error Unknown Toon flag:{}", toonmode),
         };
         ctx.toon_texture_index = match ctx.toon_mode {
-            PMXToonMode::Separate => self.inner.read_sized(s_texture_index).unwrap(),
-            PMXToonMode::Common => self.inner.read_u8() as i32,
+            PMXToonModeRaw::Separate => self.inner.read_sized(s_texture_index).unwrap(),
+            PMXToonModeRaw::Common => self.inner.read_u8() as i32,
         };
         ctx.memo = self.inner.read_text_buf(self.header.encode);
         ctx.num_face_vertices = self.inner.read_i32();
@@ -365,10 +373,10 @@ impl BonesLoader {
         self.header.clone()
     }
     /// read bone information parent child IK etc.
-    /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok 
+    /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok
     /// Next stage is MorphsLoader
     pub fn read_pmx_bones(mut self) -> (Vec<PMXBone>, MorphsLoader) {
-        let mut bones= vec![] ;
+        let mut bones = vec![];
         let count = self.inner.read_i32();
 
         for _ in 0..count {
@@ -476,7 +484,7 @@ impl MorphsLoader {
         self.header.clone()
     }
     pub fn read_pmx_morphs(mut self) -> (Vec<PMXMorph>, FrameLoader) {
-        let mut morphs= vec![] ;
+        let mut morphs = vec![];
         let count = self.inner.read_i32();
 
         for _ in 0..count {
@@ -484,11 +492,13 @@ impl MorphsLoader {
             morphs.push(bone);
         }
 
-
-        (morphs, FrameLoader{
-            header: self.header,
-            inner: self.inner
-        })
+        (
+            morphs,
+            FrameLoader {
+                header: self.header,
+                inner: self.inner,
+            },
+        )
     }
 
     fn read_pmx_morph(&mut self) -> PMXMorph {
@@ -601,90 +611,108 @@ impl FrameLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_frames(mut self)->(Vec<PMXFrame>,RigidLoader){
-        let count=self.inner.read_i32();
-        let mut frames=vec![];
+    pub fn read_frames(mut self) -> (Vec<PMXFrame>, RigidLoader) {
+        let count = self.inner.read_i32();
+        let mut frames = vec![];
         for _ in 0..count {
             let name = self.inner.read_text_buf(self.header.encode);
             let name_en = self.inner.read_text_buf(self.header.encode);
             let flag = self.inner.read_u8();
-            let count=self.inner.read_i32();
-            let mut o=vec![];
-            for _ in 0..count{
-                let target=self.inner.read_u8();
-                let index=match target {
-                    0=>{self.inner.read_sized(self.header.s_bone_index).unwrap()}
-                    1=>{self.inner.read_sized(self.header.s_morph_index).unwrap()}
-                    _=>{panic!("Invalid frame ")}
+            let count = self.inner.read_i32();
+            let mut o = vec![];
+            for _ in 0..count {
+                let target = self.inner.read_u8();
+                let index = match target {
+                    0 => self.inner.read_sized(self.header.s_bone_index).unwrap(),
+                    1 => self.inner.read_sized(self.header.s_morph_index).unwrap(),
+                    _ => {
+                        panic!("Invalid frame ")
+                    }
                 };
-                o.push(FrameInner{ target, index })
+                o.push(FrameInner { target, index })
             }
-            frames.push(PMXFrame{
+            frames.push(PMXFrame {
                 name,
                 name_en,
                 is_special: flag,
-                inners:o
+                inners: o,
             })
         }
-        (frames,RigidLoader{ header: self.header, inner: self.inner })
+        (
+            frames,
+            RigidLoader {
+                header: self.header,
+                inner: self.inner,
+            },
+        )
     }
 }
-pub struct RigidLoader{
-    header:PMXHeaderRust,
-    inner:BinaryReader
+pub struct RigidLoader {
+    header: PMXHeaderRust,
+    inner: BinaryReader,
 }
-impl RigidLoader{
+impl RigidLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_rigids(mut self) ->(Vec<PMXRigid>, JointLoader){
-        let len=self.inner.read_i32();
-        let mut bodies=Vec::with_capacity(len as usize);
-        for _ in 0..len{
-            let name=self.inner.read_text_buf(self.header.encode);
-            let name_en=self.inner.read_text_buf(self.header.encode);
-            let bone_index=self.inner.read_sized(self.header.s_bone_index).unwrap();
-            let group=self.inner.read_u8();
-            let un_collision_group_flag=self.inner.read_u16();
-            let form=match self.inner.read_u8() {
-                0=>PMXRigidForm::Sphere,
-                1=>PMXRigidForm::Box,
-                2=>PMXRigidForm::Capsule,
-                _=>{unreachable!("Invalid PMX file detected at rigid loader")}
+    pub fn read_rigids(mut self) -> (Vec<PMXRigid>, JointLoader) {
+        let len = self.inner.read_i32();
+        let mut bodies = Vec::with_capacity(len as usize);
+        for _ in 0..len {
+            let name = self.inner.read_text_buf(self.header.encode);
+            let name_en = self.inner.read_text_buf(self.header.encode);
+            let bone_index = self.inner.read_sized(self.header.s_bone_index).unwrap();
+            let group = self.inner.read_u8();
+            let un_collision_group_flag = self.inner.read_u16();
+            let form = match self.inner.read_u8() {
+                0 => PMXRigidForm::Sphere,
+                1 => PMXRigidForm::Box,
+                2 => PMXRigidForm::Capsule,
+                _ => {
+                    unreachable!("Invalid PMX file detected at rigid loader")
+                }
             };
-            let size=self.inner.read_vec3();
-            let position=self.inner.read_vec3();
-            let rotation=self.inner.read_vec3();
-            let mass=self.inner.read_f32();
-            let move_resist=self.inner.read_f32();
-            let rotation_resist=self.inner.read_f32();
-            let repulsion=self.inner.read_f32();
-            let friction=self.inner.read_f32();
-            let calc_method=match self.inner.read_u8(){
-                0=>PMXRigidCalcMethod::Static,
-                1=>PMXRigidCalcMethod::Dynamic,
-                2=>PMXRigidCalcMethod::DynamicWithBonePosition,
-                _=>{unreachable!("Invalid PMX file detected as rigid loader")}
+            let size = self.inner.read_vec3();
+            let position = self.inner.read_vec3();
+            let rotation = self.inner.read_vec3();
+            let mass = self.inner.read_f32();
+            let move_resist = self.inner.read_f32();
+            let rotation_resist = self.inner.read_f32();
+            let repulsion = self.inner.read_f32();
+            let friction = self.inner.read_f32();
+            let calc_method = match self.inner.read_u8() {
+                0 => PMXRigidCalcMethod::Static,
+                1 => PMXRigidCalcMethod::Dynamic,
+                2 => PMXRigidCalcMethod::DynamicWithBonePosition,
+                _ => {
+                    unreachable!("Invalid PMX file detected as rigid loader")
+                }
             };
-        bodies.push(PMXRigid{
-            name,
-            name_en,
-            bone_index,
-            group,
-            un_collision_group_flag,
-            form,
-            size,
-            position,
-            rotation,
-            mass,
-            move_resist,
-            rotation_resist,
-            repulsion,
-            friction,
-            calc_method
-        });
+            bodies.push(PMXRigid {
+                name,
+                name_en,
+                bone_index,
+                group,
+                un_collision_group_flag,
+                form,
+                size,
+                position,
+                rotation,
+                mass,
+                move_resist,
+                rotation_resist,
+                repulsion,
+                friction,
+                calc_method,
+            });
         }
-        (bodies, JointLoader { header: self.header, inner: self.inner })
+        (
+            bodies,
+            JointLoader {
+                header: self.header,
+                inner: self.inner,
+            },
+        )
     }
 }
 
@@ -705,7 +733,10 @@ impl JointLoader {
         }
         let next_loader = if self.header.version > 2.0 {
             //this file contains softbody section
-            Some(SoftBodyLoader { header: self.header, inner: self.inner })
+            Some(SoftBodyLoader {
+                header: self.header,
+                inner: self.inner,
+            })
         } else {
             None
         };
@@ -715,8 +746,8 @@ impl JointLoader {
         let name = self.inner.read_text_buf(self.header.encode);
         let name_en = self.inner.read_text_buf(self.header.encode);
         let raw_parameter = self.inner.read_pmx_joint_parameter_raw();
-        fn is_eq_f32(lhs:f32,rhs:f32)->bool{
-            (lhs-rhs).abs()< 0.01
+        fn is_eq_f32(lhs: f32, rhs: f32) -> bool {
+            (lhs - rhs).abs() < 0.01
         }
         let joint_parameter = match raw_parameter.joint_type {
             0 => PMXJointType::Spring6DOF {
@@ -747,7 +778,7 @@ impl JointLoader {
                 position: raw_parameter.position,
                 rotation: raw_parameter.rotation,
             },
-            3=>PMXJointType::ConeTwist{
+            3 => PMXJointType::ConeTwist {
                 a_rigid_index: raw_parameter.a_rigid_index,
                 b_rigid_index: raw_parameter.b_rigid_index,
                 swing_span1: raw_parameter.rotation_limit_down[2],
@@ -758,34 +789,39 @@ impl JointLoader {
                 relaxation_factor: raw_parameter.spring_const_move[2],
                 damping: raw_parameter.move_limit_down[0],
                 fix_thresh: raw_parameter.move_limit_up[0],
-                enable_motor: is_eq_f32(raw_parameter.move_limit_down[2],1.0),
+                enable_motor: is_eq_f32(raw_parameter.move_limit_down[2], 1.0),
                 max_motor_impulse: raw_parameter.move_limit_up[2],
-                motor_target_in_constraint_space: raw_parameter.spring_const_rotation
+                motor_target_in_constraint_space: raw_parameter.spring_const_rotation,
             },
-            4=>PMXJointType::Slider{
+            4 => PMXJointType::Slider {
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
                 lower_linear_limit: raw_parameter.move_limit_down[0],
                 upper_linear_limit: raw_parameter.move_limit_up[0],
                 lower_angle_limit: raw_parameter.rotation_limit_down[0],
                 upper_angle_limit: raw_parameter.rotation_limit_up[0],
-                power_linear_motor: is_eq_f32(raw_parameter.spring_const_move[0],1.0),
+                power_linear_motor: is_eq_f32(raw_parameter.spring_const_move[0], 1.0),
                 target_linear_motor_velocity: raw_parameter.spring_const_move[1],
                 max_linear_motor_force: raw_parameter.spring_const_move[2],
-                power_angler_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
+                power_angler_motor: is_eq_f32(raw_parameter.spring_const_rotation[0], 1.0),
                 target_angler_motor_velocity: raw_parameter.spring_const_rotation[1],
-                max_angler_motor_force: raw_parameter.spring_const_rotation[2]
+                max_angler_motor_force: raw_parameter.spring_const_rotation[2],
             },
-            5=>PMXJointType::Hinge {
+            5 => PMXJointType::Hinge {
+                a_rigid_index: raw_parameter.a_rigid_index,
+                b_rigid_index: raw_parameter.b_rigid_index,
                 low: raw_parameter.move_limit_down[0],
                 high: raw_parameter.move_limit_up[0],
                 softness: raw_parameter.spring_const_move[0],
                 bias_factor: raw_parameter.spring_const_move[1],
                 relaxation_factor: raw_parameter.spring_const_move[2],
-                enable_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
-                enable_angle_motor: is_eq_f32(raw_parameter.spring_const_rotation[0],1.0),
+                enable_motor: is_eq_f32(raw_parameter.spring_const_rotation[0], 1.0),
                 target_velocity: raw_parameter.spring_const_rotation[1],
-                max_motor_impulse: raw_parameter.spring_const_rotation[2]
+                max_motor_impulse: raw_parameter.spring_const_rotation[2],
             },
-            _ => { unreachable!("Invalid joint type detected in joint loader") }
+            _ => {
+                unreachable!("Invalid joint type detected in joint loader")
+            }
         };
         PMXJoint {
             name,
@@ -804,89 +840,103 @@ impl SoftBodyLoader {
     pub fn get_header(&self) -> PMXHeaderRust {
         self.header.clone()
     }
-    pub fn read_pmx_soft_bodies(mut self)->Vec<PMXSoftBody>{
-        let n_soft_bodies=self.inner.read_i32();
-        let mut soft_bodies =Vec::with_capacity(n_soft_bodies as usize);
-        for _ in 0..n_soft_bodies{
+    pub fn read_pmx_soft_bodies(mut self) -> Vec<PMXSoftBody> {
+        let n_soft_bodies = self.inner.read_i32();
+        let mut soft_bodies = Vec::with_capacity(n_soft_bodies as usize);
+        for _ in 0..n_soft_bodies {
             soft_bodies.push(self.read_soft_body())
         }
         soft_bodies
     }
-    fn read_soft_body(&mut self)->PMXSoftBody{
-        let name=self.inner.read_text_buf(self.header.encode);
-        let name_en=self.inner.read_text_buf(self.header.encode);
-        let form =match self.inner.read_u8(){
-            0=>PMXSoftBodyForm::TriMesh,
-            1=>PMXSoftBodyForm::Rope,
-            _=>{panic!("Error invalid PMXSoftBodyForm ")}
+    fn read_soft_body(&mut self) -> PMXSoftBody {
+        let name = self.inner.read_text_buf(self.header.encode);
+        let name_en = self.inner.read_text_buf(self.header.encode);
+        let form = match self.inner.read_u8() {
+            0 => PMXSoftBodyForm::TriMesh,
+            1 => PMXSoftBodyForm::Rope,
+            _ => {
+                panic!("Error invalid PMXSoftBodyForm ")
+            }
         };
-        let material_index=self.inner.read_sized(self.header.s_material_index).unwrap();
-        let group=self.inner.read_u8();
-        let un_collision_group_flag=self.inner.read_u16();
-        let bit_flag=self.inner.read_u8();
-        let b_link_create_distance=self.inner.read_i32();
-        let clusters=self.inner.read_i32();
-        let mass=self.inner.read_f32();
-        let collision_margin=self.inner.read_f32();
-        let aero_model=match self.inner.read_i32(){
-            0=>PMXSoftBodyAeroModel::VPoint,
-            1=>PMXSoftBodyAeroModel::VTwoSide,
-            2=>PMXSoftBodyAeroModel::VOneSided,
-            3=>PMXSoftBodyAeroModel::FTwoSided,
-            4=>PMXSoftBodyAeroModel::FOneSided,
-            _=>{panic!("Error invalid PMXSoftBodyAeromodel")}
+        let material_index = self.inner.read_sized(self.header.s_material_index).unwrap();
+        let group = self.inner.read_u8();
+        let un_collision_group_flag = self.inner.read_u16();
+        let bit_flag = self.inner.read_u8();
+        let b_link_create_distance = self.inner.read_i32();
+        let clusters = self.inner.read_i32();
+        let mass = self.inner.read_f32();
+        let collision_margin = self.inner.read_f32();
+        let aero_model = match self.inner.read_i32() {
+            0 => PMXSoftBodyAeroModel::VPoint,
+            1 => PMXSoftBodyAeroModel::VTwoSide,
+            2 => PMXSoftBodyAeroModel::VOneSided,
+            3 => PMXSoftBodyAeroModel::FTwoSided,
+            4 => PMXSoftBodyAeroModel::FOneSided,
+            _ => {
+                panic!("Error invalid PMXSoftBodyAeromodel")
+            }
         };
         //config
-        let vcf=self.inner.read_f32();
-        let dp=self.inner.read_f32();
-        let dg=self.inner.read_f32();
-        let lf=self.inner.read_f32();
-        let pr=self.inner.read_f32();
-        let vc=self.inner.read_f32();
-        let df=self.inner.read_f32();
-        let mt=self.inner.read_f32();
-        let chr=self.inner.read_f32();
-        let khr=self.inner.read_f32();
-        let shr=self.inner.read_f32();
-        let ahr=self.inner.read_f32();
+        let vcf = self.inner.read_f32();
+        let dp = self.inner.read_f32();
+        let dg = self.inner.read_f32();
+        let lf = self.inner.read_f32();
+        let pr = self.inner.read_f32();
+        let vc = self.inner.read_f32();
+        let df = self.inner.read_f32();
+        let mt = self.inner.read_f32();
+        let chr = self.inner.read_f32();
+        let khr = self.inner.read_f32();
+        let shr = self.inner.read_f32();
+        let ahr = self.inner.read_f32();
         //cluster
-        let srhr_cl=self.inner.read_f32();
-        let skhr_cl=self.inner.read_f32();
-        let sshr_cl=self.inner.read_f32();
-        let sr_splt_cl=self.inner.read_f32();
-        let sk_splt_cl=self.inner.read_f32();
-        let ss_splt_cl=self.inner.read_f32();
+        let srhr_cl = self.inner.read_f32();
+        let skhr_cl = self.inner.read_f32();
+        let sshr_cl = self.inner.read_f32();
+        let sr_splt_cl = self.inner.read_f32();
+        let sk_splt_cl = self.inner.read_f32();
+        let ss_splt_cl = self.inner.read_f32();
         //iteration
-        let v_it=self.inner.read_i32();
-        let p_it=self.inner.read_i32();
-        let d_it=self.inner.read_i32();
-        let c_it=self.inner.read_i32();
+        let v_it = self.inner.read_i32();
+        let p_it = self.inner.read_i32();
+        let d_it = self.inner.read_i32();
+        let c_it = self.inner.read_i32();
         //material
-        let lst=self.inner.read_f32();
-        let ast=self.inner.read_f32();
-        let vst=self.inner.read_f32();
-        let n_anchor_rigid=self.inner.read_i32();
-        let mut anchor_rigid=Vec::with_capacity(n_anchor_rigid as usize);
-        for _ in 0..n_anchor_rigid{
-            let rigid_index=self.inner.read_sized(self.header.s_rigid_body_index).unwrap();
-            let vertex_index=self.inner.read_vertex_index(self.header.s_vertex_index).unwrap();
-            let near_mode =match self.inner.read_i8(){
-                0=>true,
-                1=>false,
-                _=>panic!("Error detected PMXSoftBodyAnchorRigid near mode"),
+        let lst = self.inner.read_f32();
+        let ast = self.inner.read_f32();
+        let vst = self.inner.read_f32();
+        let n_anchor_rigid = self.inner.read_i32();
+        let mut anchor_rigid = Vec::with_capacity(n_anchor_rigid as usize);
+        for _ in 0..n_anchor_rigid {
+            let rigid_index = self
+                .inner
+                .read_sized(self.header.s_rigid_body_index)
+                .unwrap();
+            let vertex_index = self
+                .inner
+                .read_vertex_index(self.header.s_vertex_index)
+                .unwrap();
+            let near_mode = match self.inner.read_i8() {
+                0 => true,
+                1 => false,
+                _ => panic!("Error detected PMXSoftBodyAnchorRigid near mode"),
             };
-            anchor_rigid.push(PMXSoftBodyAnchorRigid{
+            anchor_rigid.push(PMXSoftBodyAnchorRigid {
                 rigid_index,
                 vertex_index,
-                near_mode
+                near_mode,
             });
         }
-        let n_pin_vertex=self.inner.read_i32();
-        let mut pin_vertex=Vec::with_capacity(n_pin_vertex as usize);
-        for _ in 0..n_pin_vertex{
-            pin_vertex.push(self.inner.read_vertex_index(self.header.s_vertex_index).unwrap())
+        let n_pin_vertex = self.inner.read_i32();
+        let mut pin_vertex = Vec::with_capacity(n_pin_vertex as usize);
+        for _ in 0..n_pin_vertex {
+            pin_vertex.push(
+                self.inner
+                    .read_vertex_index(self.header.s_vertex_index)
+                    .unwrap(),
+            )
         }
-        PMXSoftBody{
+        PMXSoftBody {
             name,
             name_en,
             form,
@@ -925,7 +975,7 @@ impl SoftBodyLoader {
             ast,
             vst,
             anchor_rigid,
-            pin_vertex
+            pin_vertex,
         }
     }
 }

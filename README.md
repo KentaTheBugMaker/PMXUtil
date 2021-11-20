@@ -20,13 +20,13 @@
   13. Write vertices
   14. Write Materials
   15. Write Bone
-  16, Write Morph
-     
+  16. Write Morph
+  17. Write Frame
+  18. Write Rigid
+  19. Write Joint
 ### WIP
   1. Implement Display trait
-  2. Parse RigidBody Information
-  3. Parse Joint
-  4. Parse SoftBody
+
 ## How to Use
 ### 1. Import
 ```rust

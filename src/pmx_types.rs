@@ -72,7 +72,7 @@ pub mod pmx_types {
     }
     /// these are pmx embedded comments and names
     /// PMX仕様.txt 176~181
-    #[derive(Debug,Eq, PartialEq,Clone)]
+    #[derive(Debug, Eq, PartialEq, Clone)]
     pub struct PMXModelInfo {
         pub name: String,
         pub name_en: String,
@@ -80,47 +80,47 @@ pub mod pmx_types {
         pub comment_en: String,
     }
     ///PMX仕様.txt 190~197
-    #[derive(Debug,Copy, Clone,PartialEq)]
+    #[derive(Debug, Copy, Clone, PartialEq)]
     pub enum PMXVertexWeight {
         BDEF1(i32),
-        BDEF2{
-            bone_index_1:i32,
-            bone_index_2:i32,
-            bone_weight_1:f32
+        BDEF2 {
+            bone_index_1: i32,
+            bone_index_2: i32,
+            bone_weight_1: f32,
         },
-        BDEF4{
-            bone_index_1:i32,
-            bone_index_2:i32,
-            bone_index_3:i32,
-            bone_index_4:i32,
-            bone_weight_1:f32,
-            bone_weight_2:f32,
-            bone_weight_3:f32,
-            bone_weight_4:f32,
+        BDEF4 {
+            bone_index_1: i32,
+            bone_index_2: i32,
+            bone_index_3: i32,
+            bone_index_4: i32,
+            bone_weight_1: f32,
+            bone_weight_2: f32,
+            bone_weight_3: f32,
+            bone_weight_4: f32,
         },
-        SDEF{
-            bone_index_1:i32,
-            bone_index_2:i32,
-            bone_weight_1:f32,
-            sdef_c:Vec3,
-            sdef_r0:Vec3,
-            sdef_r1:Vec3
+        SDEF {
+            bone_index_1: i32,
+            bone_index_2: i32,
+            bone_weight_1: f32,
+            sdef_c: Vec3,
+            sdef_r0: Vec3,
+            sdef_r1: Vec3,
         },
-        QDEF{
-            bone_index_1:i32,
-            bone_index_2:i32,
-            bone_index_3:i32,
-            bone_index_4:i32,
-            bone_weight_1:f32,
-            bone_weight_2:f32,
-            bone_weight_3:f32,
-            bone_weight_4:f32,
+        QDEF {
+            bone_index_1: i32,
+            bone_index_2: i32,
+            bone_index_3: i32,
+            bone_index_4: i32,
+            bone_weight_1: f32,
+            bone_weight_2: f32,
+            bone_weight_3: f32,
+            bone_weight_4: f32,
         },
     }
     ///these value are must submitted to vertex shader
     /// but bone_indices bone_weights must submitted to physics engine
     /// PMX仕様.txt 184~252
-    #[derive(Debug,Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct PMXVertex {
         pub position: Vec3,
         pub norm: Vec3,
@@ -133,13 +133,13 @@ pub mod pmx_types {
     /*Represent Triangle*/
     /// represent one triangle
     /// PMX仕様.txt 255~257
-    #[derive(Copy, Clone,Eq, PartialEq,Debug)]
+    #[derive(Copy, Clone, Eq, PartialEq, Debug)]
     pub struct PMXFace {
         pub vertices: [i32; 3],
     }
     /// texture file name list
     /// PMX仕様.txt 263~267
-    #[derive(Debug,Eq,PartialEq)]
+    #[derive(Debug, Eq, PartialEq)]
     pub struct PMXTextureList {
         pub textures: Vec<String>,
     }
@@ -154,24 +154,38 @@ pub mod pmx_types {
         DrawPoint = 0x40,
         DrawLine = 0x80,
     }
+
     ///PMX仕様.txt 295
-    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
-    pub enum PMXSphereMode {
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    pub enum PMXSphereModeRaw {
         None = 0x00,
         Mul = 0x01,
         Add = 0x02,
         SubTexture = 0x03,
     }
-    ///PMX仕様.txt 297 ~ 303
-    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
+
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    pub enum PMXSphereMode {
+        Mul(i32),
+        Add(i32),
+        SubTexture,
+    }
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
     pub enum PMXToonMode {
+        Separate(i32),
+        Common(i32),
+    }
+
+    ///PMX仕様.txt 297 ~ 303
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    pub enum PMXToonModeRaw {
         Separate = 0x00,
         //< 0:個別Toon
         Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
     }
     /// these values are must submitted to fragment or vertex shader by uniform or push_constant
     ///PMX仕様.txt 276~310
-    #[derive(Debug,Clone, PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct PMXMaterial {
         pub name: String,
         pub english_name: String,
@@ -184,27 +198,27 @@ pub mod pmx_types {
         pub edge_size: f32,
         pub texture_index: i32,
         pub sphere_mode_texture_index: i32,
-        pub sphere_mode: PMXSphereMode,
-        pub toon_mode: PMXToonMode,
+        pub sphere_mode: PMXSphereModeRaw,
+        pub toon_mode: PMXToonModeRaw,
         pub toon_texture_index: i32,
         pub memo: String,
         pub num_face_vertices: i32,
     }
-///PMX仕様.txt 476~497
-    #[derive(Debug,Clone,PartialEq)]
-    pub struct PMXFrame{
-       pub name:String,
-       pub name_en:String,
-        pub is_special:u8,
-        pub inners:Vec<FrameInner>
+    ///PMX仕様.txt 476~497
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct PMXFrame {
+        pub name: String,
+        pub name_en: String,
+        pub is_special: u8,
+        pub inners: Vec<FrameInner>,
     }
-    #[derive(Debug,Copy, Clone,Eq, PartialEq)]
-   pub struct FrameInner{
-       pub target:u8,
-       pub index:i32
+    #[derive(Debug, Copy, Clone, Eq, PartialEq)]
+    pub struct FrameInner {
+        pub target: u8,
+        pub index: i32,
     }
-///PMX仕様.txt 313 ~395
-    #[derive(Debug,Clone,PartialEq)]
+    ///PMX仕様.txt 313 ~395
+    #[derive(Debug, Clone, PartialEq)]
     pub struct PMXBone {
         pub name: String,
         pub english_name: String,
@@ -226,15 +240,15 @@ pub mod pmx_types {
         pub ik_links: Vec<PMXIKLink>,
     }
 
-    #[derive(Debug,Clone,PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct PMXIKLink {
         pub ik_bone_index: i32,
         pub enable_limit: u8,
         pub limit_min: Vec3,
         pub limit_max: Vec3,
     }
-///PMX仕様.txt 399~459
-    #[derive(Debug,Clone,PartialEq)]
+    ///PMX仕様.txt 399~459
+    #[derive(Debug, Clone, PartialEq)]
     pub struct PMXMorph {
         pub name: String,
         pub english_name: String,
@@ -244,7 +258,7 @@ pub mod pmx_types {
         pub morph_data: Vec<MorphTypes>,
     }
 
-    #[derive(Debug,Clone,PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub enum MorphTypes {
         Vertex(VertexMorph),
         UV(UVMorph),
@@ -255,34 +269,36 @@ pub mod pmx_types {
         Bone(BoneMorph),
         Material(MaterialMorph),
         Group(GroupMorph),
+        Flip(FlipMorph),
+        Impulse(ImpulseMorph),
     }
 
-    #[derive(Debug,Clone,Copy,PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct VertexMorph {
         pub index: i32,
         pub offset: Vec3,
     }
 
-    #[derive(Debug,Clone,Copy,PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct UVMorph {
         pub index: i32,
         pub offset: Vec4,
     }
 
-    #[derive(Debug,Copy, Clone,PartialEq)]
+    #[derive(Debug, Copy, Clone, PartialEq)]
     pub struct GroupMorph {
         pub index: i32,
         pub morph_factor: f32,
     }
 
-    #[derive(Debug,Copy, Clone,PartialEq)]
+    #[derive(Debug, Copy, Clone, PartialEq)]
     pub struct BoneMorph {
         pub index: i32,
         pub translates: Vec3,
         pub rotates: Vec4,
     }
 
-    #[derive(Debug,Clone,PartialEq)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct MaterialMorph {
         pub index: i32,
         pub formula: u8,
@@ -297,6 +313,20 @@ pub mod pmx_types {
         pub toon_texture_factor: Vec4,
     }
 
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct FlipMorph {
+        pub index: i32,
+        pub morph_factor: f32,
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct ImpulseMorph {
+        pub rigid_index: i32,
+        pub is_local: u8,
+        pub velocity: Vec3,
+        pub torque: Vec3,
+    }
+    #[derive(Debug,Clone)]
     pub struct PMXRigid {
         pub name: String,
         pub name_en: String,
@@ -315,20 +345,22 @@ pub mod pmx_types {
         pub calc_method: PMXRigidCalcMethod,
     }
 
+    #[derive(Clone,Debug)]
     pub enum PMXRigidForm {
         Sphere,
         //0
         Box,
         //1
-        Capsule,//2
+        Capsule, //2
     }
 
+    #[derive(Debug, Clone)]
     pub enum PMXRigidCalcMethod {
         Static,
         //0
         Dynamic,
         //1
-        DynamicWithBonePosition,//2
+        DynamicWithBonePosition, //2
     }
 
     /// C bridge
@@ -348,12 +380,14 @@ pub mod pmx_types {
         pub(crate) spring_const_rotation: Vec3,
     }
 
+    #[derive(Clone)]
     pub struct PMXJoint {
         pub name: String,
         pub name_en: String,
         pub joint_type: PMXJointType,
     }
 
+    #[derive(Clone)]
     pub enum PMXJointType {
         ///Support from PMXUtil 0.4.0
         Spring6DOF {
@@ -400,6 +434,8 @@ pub mod pmx_types {
             motor_target_in_constraint_space: Vec3,
         },
         Slider {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
             lower_linear_limit: f32,
             upper_linear_limit: f32,
             lower_angle_limit: f32,
@@ -412,74 +448,76 @@ pub mod pmx_types {
             max_angler_motor_force: f32,
         },
         Hinge {
+            a_rigid_index: i32,
+            b_rigid_index: i32,
             low: f32,
             high: f32,
             softness: f32,
             bias_factor: f32,
             relaxation_factor: f32,
             enable_motor: bool,
-            enable_angle_motor: bool,
+
             target_velocity: f32,
             max_motor_impulse: f32,
         },
     }
-    /// from PMXxUtil 0.5.0
-    pub struct PMXSoftBody{
-        pub name:String,
-        pub name_en:String,
-        pub form:PMXSoftBodyForm,//i8
-        pub material_index:i32,
-        pub group:u8,
-        pub un_collision_group_flag:u16,
-        pub bit_flag:u8,
-        pub b_link_create_distance:i32,
-        pub clusters:i32,
-        pub mass:f32,
-        pub collision_margin:f32,
-        pub aero_model:PMXSoftBodyAeroModel,//i32
+    /// from PMXUtil 0.5.0
+    pub struct PMXSoftBody {
+        pub name: String,
+        pub name_en: String,
+        pub form: PMXSoftBodyForm, //i8
+        pub material_index: i32,
+        pub group: u8,
+        pub un_collision_group_flag: u16,
+        pub bit_flag: u8,
+        pub b_link_create_distance: i32,
+        pub clusters: i32,
+        pub mass: f32,
+        pub collision_margin: f32,
+        pub aero_model: PMXSoftBodyAeroModel, //i32
         ///config
-        pub vcf:f32,
-        pub dp:f32,
-        pub dg:f32,
-        pub lf:f32,
-        pub pr:f32,
-        pub vc:f32,
-        pub df:f32,
-        pub mt:f32,
-        pub chr:f32,
-        pub khr:f32,
-        pub shr:f32,
-        pub ahr:f32,
+        pub vcf: f32,
+        pub dp: f32,
+        pub dg: f32,
+        pub lf: f32,
+        pub pr: f32,
+        pub vc: f32,
+        pub df: f32,
+        pub mt: f32,
+        pub chr: f32,
+        pub khr: f32,
+        pub shr: f32,
+        pub ahr: f32,
         ///cluster
-        pub srhr_cl:f32,
-        pub skhr_cl:f32,
-        pub sshr_cl:f32,
-        pub sr_splt_cl:f32,
-        pub sk_splt_cl:f32,
-        pub ss_splt_cl:f32,
+        pub srhr_cl: f32,
+        pub skhr_cl: f32,
+        pub sshr_cl: f32,
+        pub sr_splt_cl: f32,
+        pub sk_splt_cl: f32,
+        pub ss_splt_cl: f32,
         ///iteration
-        pub v_it:i32,
-        pub p_it:i32,
-        pub d_it:i32,
-        pub c_it:i32,
+        pub v_it: i32,
+        pub p_it: i32,
+        pub d_it: i32,
+        pub c_it: i32,
         ///material
-        pub lst:f32,
-        pub ast:f32,
-        pub vst:f32,
-        pub anchor_rigid:Vec<PMXSoftBodyAnchorRigid>,
-        pub pin_vertex:Vec<i32>,
+        pub lst: f32,
+        pub ast: f32,
+        pub vst: f32,
+        pub anchor_rigid: Vec<PMXSoftBodyAnchorRigid>,
+        pub pin_vertex: Vec<i32>,
     }
-    pub struct PMXSoftBodyAnchorRigid{
-        pub rigid_index:i32,
-        pub vertex_index:i32,
-        pub near_mode:bool
+    pub struct PMXSoftBodyAnchorRigid {
+        pub rigid_index: i32,
+        pub vertex_index: i32,
+        pub near_mode: bool,
     }
 
-    pub enum PMXSoftBodyForm{
+    pub enum PMXSoftBodyForm {
         TriMesh,
         Rope,
     }
-    pub enum PMXSoftBodyAeroModel{
+    pub enum PMXSoftBodyAeroModel {
         VPoint,
         VTwoSide,
         VOneSided,
@@ -503,21 +541,47 @@ pub mod pmx_types {
                 PMXVertexWeight::BDEF1(b1) => {
                     writeln!(f, "BDEF1:[index1:{} weight1:1.0]", b1);
                 }
-                PMXVertexWeight::BDEF2{ bone_index_1, bone_index_2, bone_weight_1 } => {
+                PMXVertexWeight::BDEF2 {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_weight_1,
+                } => {
                     writeln!(
                         f,
                         "BDEF2:[index1:{} index2:{} weight1:{} weight2:{}]",
-                        bone_index_1, bone_index_2, bone_weight_1,1.0-bone_weight_1
+                        bone_index_1,
+                        bone_index_2,
+                        bone_weight_1,
+                        1.0 - bone_weight_1
                     );
                 }
-                PMXVertexWeight::BDEF4{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                PMXVertexWeight::BDEF4 {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_index_3,
+                    bone_index_4,
+                    bone_weight_1,
+                    bone_weight_2,
+                    bone_weight_3,
+                    bone_weight_4,
+                } => {
                     writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
                 }
-                PMXVertexWeight::SDEF{ bone_index_1, bone_index_2, bone_weight_1, sdef_c, sdef_r0, sdef_r1 } => {
+                PMXVertexWeight::SDEF {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_weight_1,
+                    sdef_c,
+                    sdef_r0,
+                    sdef_r1,
+                } => {
                     writeln!(
                         f,
                         "SDEF:[index1:{} index2:{} weight1:{} weight2:{}]",
-                        bone_index_1, bone_index_2, bone_weight_1,1.0-bone_weight_1
+                        bone_index_1,
+                        bone_index_2,
+                        bone_weight_1,
+                        1.0 - bone_weight_1
                     );
                     writeln!(
                         f,
@@ -525,7 +589,16 @@ pub mod pmx_types {
                         sdef_c, sdef_r0, sdef_r1
                     );
                 }
-                PMXVertexWeight::QDEF{ bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4 } => {
+                PMXVertexWeight::QDEF {
+                    bone_index_1,
+                    bone_index_2,
+                    bone_index_3,
+                    bone_index_4,
+                    bone_weight_1,
+                    bone_weight_2,
+                    bone_weight_3,
+                    bone_weight_4,
+                } => {
                     writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
                 }
             }
@@ -544,8 +617,6 @@ pub mod pmx_types {
             Ok(())
         }
     }
-
-
 
     impl Display for PMXTextureList {
         fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {

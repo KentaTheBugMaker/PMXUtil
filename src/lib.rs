@@ -1,5 +1,5 @@
-pub mod pmx_writer;
 pub mod binary_writer;
+pub mod pmx_writer;
 macro_rules! read_bin {
     ($F:ident,$T:ty) => {
         pub(crate) fn $F(&mut self) -> $T {
@@ -30,13 +30,16 @@ pub mod pmx_types;
 mod test {
     use std::env;
 
-    use crate::pmx_loader::{BonesLoader, FacesLoader, FrameLoader, MaterialsLoader, ModelInfoLoader, MorphsLoader, PMXLoader, TexturesLoader, VerticesLoader};
+    use crate::pmx_loader::{
+        BonesLoader, FacesLoader, FrameLoader, MaterialsLoader, ModelInfoLoader, MorphsLoader,
+        PMXLoader, TexturesLoader, VerticesLoader,
+    };
     use crate::pmx_types::pmx_types::PMXModelInfo;
     use crate::pmx_writer::PMXWriter;
 
     //Perform Copy test
     #[test]
-    fn copy_test(){
+    fn copy_test() {
         let from = "./from.pmx";
         let to = "./to.pmx";
         let mut writer = PMXWriter::begin_writer(to);
@@ -52,7 +55,12 @@ mod test {
         for frame in frames {
             println!("{:#?}", frame)
         }
-        writer.set_model_info(Some(&model_info.name), Some(&model_info.name_en), Some(&model_info.comment), Some(&model_info.comment_en));
+        writer.set_model_info(
+            Some(&model_info.name),
+            Some(&model_info.name_en),
+            Some(&model_info.comment),
+            Some(&model_info.comment_en),
+        );
         writer.add_vertices(&vertices);
         writer.add_faces(&faces);
         writer.add_textures(&textures.textures);
@@ -69,7 +77,6 @@ mod test {
         let (materials_cpy, ns) = ns.read_pmx_materials();
         let (bones_cpy, ns) = ns.read_pmx_bones();
         let (morphs_cpy, ns) = ns.read_pmx_morphs();
-
 
         assert_eq!(model_info, model_info_cpy);
         assert_eq!(vertices, vertices_cpy);
