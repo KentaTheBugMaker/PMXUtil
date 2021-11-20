@@ -890,7 +890,7 @@ impl SoftBodyLoader {
             3 => PMXSoftBodyAeroModel::FTwoSided,
             4 => PMXSoftBodyAeroModel::FOneSided,
             _ => {
-                panic!("Error invalid PMXSoftBodyAeromodel")
+                panic!("Error invalid PMXSoftBodyAeroModel")
             }
         };
         //config

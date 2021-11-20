@@ -461,6 +461,7 @@ pub enum PMXJointType {
     },
 }
 /// from PMXUtil 0.5.0
+#[derive(Debug, Clone)]
 pub struct PMXSoftBody {
     pub name: String,
     pub name_en: String,
@@ -506,16 +507,18 @@ pub struct PMXSoftBody {
     pub anchor_rigid: Vec<PMXSoftBodyAnchorRigid>,
     pub pin_vertex: Vec<i32>,
 }
+#[derive(Debug, Copy, Clone)]
 pub struct PMXSoftBodyAnchorRigid {
     pub rigid_index: i32,
     pub vertex_index: i32,
     pub near_mode: bool,
 }
-
+#[derive(Debug, Copy, Clone)]
 pub enum PMXSoftBodyForm {
     TriMesh,
     Rope,
 }
+#[derive(Debug, Copy, Clone)]
 pub enum PMXSoftBodyAeroModel {
     VPoint,
     VTwoSide,

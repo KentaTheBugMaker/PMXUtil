@@ -8,8 +8,9 @@ use std::path::Path;
 use crate::pmx_types::{
     BoneMorph, FlipMorph, GroupMorph, ImpulseMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
     PMXFrame, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXMorph, PMXRigid,
-    PMXRigidCalcMethod, PMXRigidForm, PMXSphereModeRaw, PMXToonModeRaw, PMXVertex, PMXVertexWeight,
-    UVMorph, VertexMorph, BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
+    PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyForm,
+    PMXSphereModeRaw, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
+    BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
     BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
     BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
 };
@@ -52,7 +53,7 @@ impl BinaryWriter {
     pub(crate) fn write_text_buf(&mut self, text: &str) {
         let len = text.len();
         if self.is_utf16 {
-            let bytes=encoding_rs::UTF_16LE.encode(text).0;
+            let bytes = encoding_rs::UTF_16LE.encode(text).0;
             self.write_i32(bytes.len() as i32);
             self.write_vec(&bytes)
         } else {
@@ -574,6 +575,77 @@ impl BinaryWriter {
         }
     }
 
+    pub fn write_pmx_soft_body(
+        &mut self,
+        s_material_index: u8,
+        s_rigid_index: u8,
+        s_vertex_index: u8,
+        soft_body: PMXSoftBody,
+    ) {
+        self.write_text_buf(&soft_body.name);
+        self.write_text_buf(&soft_body.name_en);
+        match soft_body.form {
+            PMXSoftBodyForm::TriMesh => self.write_u8(0),
+            PMXSoftBodyForm::Rope => self.write_u8(1),
+        }
+        self.write_sized(s_material_index, soft_body.material_index);
+        self.write_u8(soft_body.group);
+        self.write_u16(soft_body.un_collision_group_flag);
+        self.write_u8(soft_body.bit_flag);
+        self.write_i32(soft_body.b_link_create_distance);
+        self.write_i32(soft_body.clusters);
+        self.write_f32(soft_body.mass);
+        self.write_f32(soft_body.collision_margin);
+        let aero_model = match soft_body.aero_model {
+            PMXSoftBodyAeroModel::VPoint => 0,
+            PMXSoftBodyAeroModel::VTwoSide => 1,
+            PMXSoftBodyAeroModel::VOneSided => 2,
+            PMXSoftBodyAeroModel::FTwoSided => 3,
+            PMXSoftBodyAeroModel::FOneSided => 4,
+        };
+        self.write_i32(aero_model);
+        //config
+        self.write_f32(soft_body.vcf);
+        self.write_f32(soft_body.dp);
+        self.write_f32(soft_body.dg);
+        self.write_f32(soft_body.lf);
+        self.write_f32(soft_body.pr);
+        self.write_f32(soft_body.vc);
+        self.write_f32(soft_body.df);
+        self.write_f32(soft_body.mt);
+        self.write_f32(soft_body.chr);
+        self.write_f32(soft_body.khr);
+        self.write_f32(soft_body.shr);
+        self.write_f32(soft_body.ahr);
+        //clusters
+        self.write_f32(soft_body.srhr_cl);
+        self.write_f32(soft_body.skhr_cl);
+        self.write_f32(soft_body.sshr_cl);
+        self.write_f32(soft_body.sr_splt_cl);
+        self.write_f32(soft_body.sk_splt_cl);
+        self.write_f32(soft_body.ss_splt_cl);
+        //iteration
+        self.write_i32(soft_body.v_it);
+        self.write_i32(soft_body.p_it);
+        self.write_i32(soft_body.d_it);
+        self.write_i32(soft_body.c_it);
+        //material
+        self.write_f32(soft_body.lst);
+        self.write_f32(soft_body.ast);
+        self.write_f32(soft_body.vst);
+        //anchor rigid
+        self.write_i32(soft_body.anchor_rigid.len() as i32);
+        for rigid in soft_body.anchor_rigid {
+            self.write_sized(s_rigid_index, rigid.rigid_index);
+            self.write_vertex_index(s_vertex_index, rigid.vertex_index);
+            self.write_u8(if rigid.near_mode { 1 } else { 0 });
+        }
+        //pin vertex
+        self.write_i32(soft_body.pin_vertex.len() as i32);
+        for vertex in soft_body.pin_vertex {
+            self.write_vertex_index(s_vertex_index, vertex);
+        }
+    }
     write_bin!(write_vec4, Vec4);
     write_bin!(write_vec3, Vec3);
     write_bin!(write_vec2, Vec2);

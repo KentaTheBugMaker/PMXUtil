@@ -64,6 +64,5 @@ println!("{:#?}", materials);
         PMXWriter::write(writer);
 ```
 ## Note 
-This crate is under construction so PMX 2.0 support is correct but PMX2.1 soft body is not supported.
 
  more example for https://github.com/t18b219k/PMXViewer_VK
