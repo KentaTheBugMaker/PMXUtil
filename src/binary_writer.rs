@@ -14,7 +14,6 @@ use crate::pmx_types::{
     BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
 };
 use crate::pmx_types::{Vec2, Vec3, Vec4};
-use encoding::{EncoderTrap, Encoding};
 
 /// This is internal use only struct
 /// Do not use this struct
@@ -53,8 +52,7 @@ impl BinaryWriter {
     pub(crate) fn write_text_buf(&mut self, text: &str) {
         let len = text.len();
         if self.is_utf16 {
-            let encoder = encoding::all::UTF_16LE;
-            let bytes = encoder.encode(text, EncoderTrap::Ignore).unwrap();
+            let bytes=encoding_rs::UTF_16LE.encode(text).0;
             self.write_i32(bytes.len() as i32);
             self.write_vec(&bytes)
         } else {

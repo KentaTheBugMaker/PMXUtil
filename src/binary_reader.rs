@@ -1,4 +1,3 @@
-extern crate encoding;
 
 use std::fs::File;
 use std::intrinsics::transmute;
@@ -7,7 +6,6 @@ use std::path::Path;
 
 use crate::pmx_types::{Encode, PMXHeaderC, PMXJointParameterRaw, Vec2, Vec3, Vec4};
 
-use self::encoding::{DecoderTrap, Encoding};
 
 pub(crate) struct BinaryReader {
     inner: BufReader<File>,
@@ -36,9 +34,8 @@ impl BinaryReader {
         let v = self.read_vec(length as usize);
         match encode {
             Encode::UTF8 => String::from_utf8(v).unwrap(),
-            Encode::Utf16Le => encoding::all::UTF_16LE
-                .decode(&v, DecoderTrap::Strict)
-                .unwrap(),
+            Encode::Utf16Le =>
+                encoding_rs::UTF_16LE.decode(&v).0.to_string(),
         }
     }
 
