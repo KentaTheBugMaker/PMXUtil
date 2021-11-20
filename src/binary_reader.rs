@@ -27,8 +27,7 @@ impl BinaryReader {
         }
     }
     pub(crate) fn read_vec(&mut self, n: usize) -> Vec<u8> {
-        let mut v = Vec::with_capacity(n);
-        v.resize(n, 0u8);
+        let mut v = vec![0; n];
         self.inner.read_exact(&mut v).unwrap();
         v
     }

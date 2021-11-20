@@ -38,7 +38,7 @@ mod test {
     fn copy_test() {
         let from = "./from.pmx";
         let to = "./to.pmx";
-        let mut writer = PMXWriter::begin_writer(to);
+        let mut writer = PMXWriter::begin_writer(to, true);
         let copy_from = PMXLoader::open(from);
         let (model_info, ns) = copy_from.read_pmx_model_info();
         let (vertices, ns) = ns.read_pmx_vertices();

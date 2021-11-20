@@ -1,4 +1,4 @@
-use crate::binary_writer::binary_writer::BinaryWriter;
+use crate::binary_writer::BinaryWriter;
 use crate::pmx_types::{
     PMXBone, PMXFace, PMXFrame, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph,
     PMXRigid, PMXVertex, PMXVertexWeight,
@@ -32,8 +32,8 @@ pub struct PMXWriter {
 impl PMXWriter {
     /// Set model name and start builder
     /// But actually data does not be wrote
-    pub fn begin_writer<P: AsRef<Path>>(path: P) -> Self {
-        let inner = BinaryWriter::create(path).unwrap();
+    pub fn begin_writer<P: AsRef<Path>>(path: P, is_utf16: bool) -> Self {
+        let inner = BinaryWriter::create(path, is_utf16).unwrap();
         Self {
             inner,
             model_info: None,
@@ -78,11 +78,11 @@ impl PMXWriter {
     }
 
     pub fn add_vertices(&mut self, vertices: &[PMXVertex]) {
-        self.vertices.extend_from_slice(&vertices);
+        self.vertices.extend_from_slice(vertices);
     }
 
     pub fn add_faces(&mut self, faces: &[PMXFace]) {
-        self.faces.extend_from_slice(&faces);
+        self.faces.extend_from_slice(faces);
     }
 
     pub fn add_textures(&mut self, textures: &[String]) {
@@ -122,11 +122,6 @@ impl PMXWriter {
             .vertices
             .iter()
             .find(|vertex| matches!(vertex.weight_type, PMXVertexWeight::QDEF { .. }));
-        let material = data_set.materials.iter().find(|material| {
-            (material.draw_mode & 0x20 == 0x20)
-                | (material.draw_mode & 0x40 == 0x40)
-                | (material.draw_mode & 0x80 == 0x80)
-        });
         let morph = data_set.morphs.iter().find(|morph| morph.morph_type > 8);
         let joint = data_set.joints.iter().find(|joint| {
             matches!(
@@ -138,7 +133,8 @@ impl PMXWriter {
                     | PMXJointType::P2P { .. }
             )
         });
-        let ext_2_1 = vertex.is_some() | material.is_some() | morph.is_some() | joint.is_some();
+        let ext_2_1 = vertex.is_some() | morph.is_some() | joint.is_some();
+        println!("2.1Extension:{}", ext_2_1);
         // generate header
         let magic = b"PMX ";
         let version = if ext_2_1 { 2.1 } else { 2.0 };
@@ -150,7 +146,7 @@ impl PMXWriter {
         let s_morph_index = require_bytes(data_set.morphs.len());
         let s_rigid_body_index = require_bytes(data_set.rigid_bodies.len());
         let parameters = [
-            0x01u8,
+            if data_set.inner.is_utf16 { 0 } else { 1 },
             data_set.additional_uvs.unwrap_or(0),
             s_vertex_index,
             s_texture_index,
