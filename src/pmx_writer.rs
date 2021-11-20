@@ -1,7 +1,7 @@
 use crate::binary_writer::binary_writer::BinaryWriter;
 use crate::pmx_types::{
     PMXBone, PMXFace, PMXFrame, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph,
-    PMXRigid, PMXTextureList, PMXVertex, PMXVertexWeight,
+    PMXRigid, PMXVertex, PMXVertexWeight,
 };
 use std::io::Write;
 use std::path::Path;
@@ -143,15 +143,21 @@ impl PMXWriter {
         let magic = b"PMX ";
         let version = if ext_2_1 { 2.1 } else { 2.0 };
         let length = 8u8;
+        let s_vertex_index = require_bytes(data_set.vertices.len());
+        let s_texture_index =require_bytes(data_set.textures.len());
+        let s_material_index = require_bytes(data_set.materials.len());
+        let s_bone_index =require_bytes_signed(data_set.bones.len());
+        let s_morph_index = require_bytes(data_set.morphs.len());
+        let s_rigid_body_index =require_bytes(data_set.rigid_bodies.len());
         let parameters = [
             0x01u8,
             data_set.additional_uvs.unwrap_or(0),
-            require_bytes(data_set.vertices.len()),
-            require_bytes(data_set.textures.len()),
-            require_bytes(data_set.materials.len()),
-            require_bytes_signed(data_set.bones.len()),
-            require_bytes(data_set.morphs.len()),
-            require_bytes(data_set.rigid_bodies.len()),
+            s_vertex_index,
+            s_texture_index,
+            s_material_index,
+            s_bone_index,
+            s_morph_index,
+            s_rigid_body_index,
         ];
         //write header
         let mut writer = data_set.inner;
@@ -171,12 +177,12 @@ impl PMXWriter {
 
         writer.write_i32(data_set.vertices.len() as i32);
         for vertex in data_set.vertices {
-            writer.write_pmx_vertex(data_set.additional_uvs.unwrap_or(0), vertex, parameters[5]);
+            writer.write_pmx_vertex(data_set.additional_uvs.unwrap_or(0), vertex, s_bone_index);
         }
 
         writer.write_i32(3 * data_set.faces.len() as i32);
         for face in data_set.faces {
-            writer.write_face(parameters[2], face)
+            writer.write_face(s_vertex_index, face)
         }
 
         writer.write_i32(data_set.textures.len() as i32);
@@ -186,39 +192,39 @@ impl PMXWriter {
 
         writer.write_i32(data_set.materials.len() as i32);
         for material in data_set.materials {
-            writer.write_pmx_material(parameters[3], material)
+            writer.write_pmx_material(s_texture_index, material)
         }
 
         writer.write_i32(data_set.bones.len() as i32);
         for bone in data_set.bones {
-            writer.write_bone(parameters[5], bone);
+            writer.write_bone(s_bone_index, bone);
         }
 
         writer.write_i32(data_set.morphs.len() as i32);
         for morph in data_set.morphs {
             writer.write_pmx_morph(
-                parameters[2],
-                parameters[5],
-                parameters[4],
-                parameters[6],
-                parameters[7],
+                s_vertex_index,
+                s_bone_index,
+                s_material_index,
+                s_morph_index,
+                s_rigid_body_index,
                 morph,
             );
         }
 
         writer.write_i32(data_set.frames.len() as i32);
         for frame in data_set.frames {
-            writer.write_pmx_frame(parameters[5], parameters[6], frame);
+            writer.write_pmx_frame(s_bone_index, s_morph_index, frame);
         }
 
         writer.write_i32(data_set.rigid_bodies.len() as i32);
         for rigid in data_set.rigid_bodies {
-            writer.write_pmx_rigid(parameters[5], rigid)
+            writer.write_pmx_rigid(s_bone_index, rigid)
         }
 
         writer.write_i32(data_set.joints.len() as i32);
         for joint in data_set.joints {
-            writer.write_pmx_joint(parameters[7], joint)
+            writer.write_pmx_joint(s_rigid_body_index, joint)
         }
 
         writer.inner.flush();

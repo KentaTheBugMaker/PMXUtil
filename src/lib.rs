@@ -28,13 +28,12 @@ pub mod pmx_types;
 
 #[cfg(test)]
 mod test {
-    use std::env;
+    
 
     use crate::pmx_loader::{
-        BonesLoader, FacesLoader, FrameLoader, MaterialsLoader, ModelInfoLoader, MorphsLoader,
-        PMXLoader, TexturesLoader, VerticesLoader,
+        PMXLoader,
     };
-    use crate::pmx_types::PMXModelInfo;
+    
     use crate::pmx_writer::PMXWriter;
 
     //Perform Copy test
@@ -43,7 +42,7 @@ mod test {
         let from = "./from.pmx";
         let to = "./to.pmx";
         let mut writer = PMXWriter::begin_writer(to);
-        let mut copy_from = PMXLoader::open(from);
+        let copy_from = PMXLoader::open(from);
         let (model_info, ns) = copy_from.read_pmx_model_info();
         let (vertices, ns) = ns.read_pmx_vertices();
         let (faces, ns) = ns.read_pmx_faces();
@@ -53,7 +52,7 @@ mod test {
         let (morphs, ns) = ns.read_pmx_morphs();
         let (frames, ns) = ns.read_frames();
         let (rigid_bodies, ns) = ns.read_rigids();
-        let (joints, ns) = ns.read_joints();
+        let (joints, _ns) = ns.read_joints();
 
         writer.set_model_info(
             Some(&model_info.name),
@@ -74,24 +73,24 @@ mod test {
 
         let reader = PMXLoader::open(to);
         let (model_info_cpy, ns) = reader.read_pmx_model_info();
-        let (vertices_cpy, ns) = ns.read_pmx_vertices();
-        let (faces_cpy, ns) = ns.read_pmx_faces();
-        let (textures_cpy, ns) = ns.read_texture_list();
-        let (materials_cpy, ns) = ns.read_pmx_materials();
-        let (bones_cpy, ns) = ns.read_pmx_bones();
-        let (morphs_cpy, ns) = ns.read_pmx_morphs();
-        let (frames_cpy, ns) = ns.read_frames();
-        let (rigid_bodies_cpy, ns) = ns.read_rigids();
-        let (joints_cpy, ns) = ns.read_joints();
         assert_eq!(model_info, model_info_cpy);
+        let (vertices_cpy, ns) = ns.read_pmx_vertices();
         assert_eq!(vertices, vertices_cpy);
+        let (faces_cpy, ns) = ns.read_pmx_faces();
         assert_eq!(faces, faces_cpy);
+        let (textures_cpy, ns) = ns.read_texture_list();
         assert_eq!(textures, textures_cpy);
+        let (materials_cpy, ns) = ns.read_pmx_materials();
         assert_eq!(materials, materials_cpy);
+        let (bones_cpy, ns) = ns.read_pmx_bones();
         assert_eq!(bones, bones_cpy);
+        let (morphs_cpy, ns) = ns.read_pmx_morphs();
         assert_eq!(morphs, morphs_cpy);
+        let (frames_cpy, ns) = ns.read_frames();
         assert_eq!(frames, frames_cpy);
+        let (rigid_bodies_cpy, ns) = ns.read_rigids();
         assert_eq!(rigid_bodies, rigid_bodies_cpy);
+        let (joints_cpy, _ns) = ns.read_joints();
         assert_eq!(joints, joints_cpy);
     }
 }

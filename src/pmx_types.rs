@@ -80,6 +80,7 @@ pub struct PMXModelInfo {
     pub comment_en: String,
 }
 ///PMX仕様.txt 190~197
+///PMX仕様.txt 190~197
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PMXVertexWeight {
     BDEF1(i32),
@@ -364,7 +365,6 @@ pub enum PMXRigidCalcMethod {
 }
 
 /// C bridge
-/// This struct is fixed size so we can use read_bin!
 #[repr(packed)]
 pub(crate) struct PMXJointParameterRaw {
     pub(crate) joint_type: u8,

@@ -76,7 +76,6 @@ impl BinaryReader {
             _ => None,
         }
     }
-    read_bin!(read_pmx_joint_parameter_raw, PMXJointParameterRaw);
     read_bin!(read_vec4, Vec4);
     read_bin!(read_vec3, Vec3);
     read_bin!(read_vec2, Vec2);
