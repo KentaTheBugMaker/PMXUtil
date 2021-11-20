@@ -140,11 +140,11 @@ impl PMXWriter {
         let version = if ext_2_1 { 2.1 } else { 2.0 };
         let length = 8u8;
         let s_vertex_index = require_bytes(data_set.vertices.len());
-        let s_texture_index = require_bytes(data_set.textures.len());
-        let s_material_index = require_bytes(data_set.materials.len());
+        let s_texture_index = require_bytes_signed(data_set.textures.len());
+        let s_material_index = require_bytes_signed(data_set.materials.len());
         let s_bone_index = require_bytes_signed(data_set.bones.len());
-        let s_morph_index = require_bytes(data_set.morphs.len());
-        let s_rigid_body_index = require_bytes(data_set.rigid_bodies.len());
+        let s_morph_index = require_bytes_signed(data_set.morphs.len());
+        let s_rigid_body_index = require_bytes_signed(data_set.rigid_bodies.len());
         let parameters = [
             if data_set.inner.is_utf16 { 0 } else { 1 },
             data_set.additional_uvs.unwrap_or(0),
@@ -155,6 +155,7 @@ impl PMXWriter {
             s_morph_index,
             s_rigid_body_index,
         ];
+        println!("s_rigid_body_index {}", s_rigid_body_index);
         //write header
         let mut writer = data_set.inner;
         writer.write_vec(magic);

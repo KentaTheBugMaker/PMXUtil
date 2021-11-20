@@ -81,24 +81,21 @@ impl ModelInfoLoader {
         self.header.clone()
     }
     /// Read model information name , international name, comment , and international comment.
-    /// Next self is VerticesLoader .
+    /// Next stage is VerticesLoader .
     pub fn read_pmx_model_info(mut self) -> (PMXModelInfo, VerticesLoader) {
-        let mut ctx = PMXModelInfo {
-            name: "".to_string(),
-            name_en: "".to_string(),
-            comment: "".to_string(),
-            comment_en: "".to_string(),
-        };
         let enc = self.header.encode;
-        ctx.name = self.inner.read_text_buf(enc);
-        ctx.name_en = self.inner.read_text_buf(enc);
-        ctx.comment = self.inner.read_text_buf(enc);
-        ctx.comment_en = self.inner.read_text_buf(enc);
-        let verticesloader = VerticesLoader {
-            header: self.header,
-            inner: self.inner,
-        };
-        (ctx, verticesloader)
+        (
+            PMXModelInfo {
+                name: self.inner.read_text_buf(enc),
+                name_en: self.inner.read_text_buf(enc),
+                comment: self.inner.read_text_buf(enc),
+                comment_en: self.inner.read_text_buf(enc),
+            },
+            VerticesLoader {
+                header: self.header,
+                inner: self.inner,
+            },
+        )
     }
 }
 pub struct VerticesLoader {
@@ -110,7 +107,7 @@ impl VerticesLoader {
         self.header.clone()
     }
     /// Read vertices position normal uv(texture coord ) etc.
-    /// Next self is FacesLoader
+    /// Next stage is FacesLoader
     pub fn read_pmx_vertices(mut self) -> (Vec<PMXVertex>, FacesLoader) {
         let verts = self.inner.read_i32();
         let mut v = Vec::with_capacity(verts as usize);

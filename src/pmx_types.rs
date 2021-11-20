@@ -71,7 +71,7 @@ pub enum IndexSize {
 }
 /// these are pmx embedded comments and names
 /// PMX仕様.txt 176~181
-#[derive(Debug, Eq, PartialEq, Clone)]
+#[derive(Debug, Default, Eq, PartialEq, Clone)]
 pub struct PMXModelInfo {
     pub name: String,
     pub name_en: String,
