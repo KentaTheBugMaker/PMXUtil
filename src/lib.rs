@@ -34,7 +34,7 @@ mod test {
         BonesLoader, FacesLoader, FrameLoader, MaterialsLoader, ModelInfoLoader, MorphsLoader,
         PMXLoader, TexturesLoader, VerticesLoader,
     };
-    use crate::pmx_types::pmx_types::PMXModelInfo;
+    use crate::pmx_types::PMXModelInfo;
     use crate::pmx_writer::PMXWriter;
 
     //Perform Copy test
@@ -52,9 +52,9 @@ mod test {
         let (bones, ns) = ns.read_pmx_bones();
         let (morphs, ns) = ns.read_pmx_morphs();
         let (frames, ns) = ns.read_frames();
-        for frame in frames {
-            println!("{:#?}", frame)
-        }
+        let (rigid_bodies, ns) = ns.read_rigids();
+        let (joints, ns) = ns.read_joints();
+
         writer.set_model_info(
             Some(&model_info.name),
             Some(&model_info.name_en),
@@ -67,6 +67,9 @@ mod test {
         writer.add_materials(&materials);
         writer.add_bones(&bones);
         writer.add_morphs(&morphs);
+        writer.add_frames(&frames);
+        writer.add_rigid_bodies(&rigid_bodies);
+        writer.add_joints(&joints);
         PMXWriter::write(writer);
 
         let reader = PMXLoader::open(to);
@@ -77,7 +80,9 @@ mod test {
         let (materials_cpy, ns) = ns.read_pmx_materials();
         let (bones_cpy, ns) = ns.read_pmx_bones();
         let (morphs_cpy, ns) = ns.read_pmx_morphs();
-
+        let (frames_cpy, ns) = ns.read_frames();
+        let (rigid_bodies_cpy, ns) = ns.read_rigids();
+        let (joints_cpy, ns) = ns.read_joints();
         assert_eq!(model_info, model_info_cpy);
         assert_eq!(vertices, vertices_cpy);
         assert_eq!(faces, faces_cpy);
@@ -85,5 +90,8 @@ mod test {
         assert_eq!(materials, materials_cpy);
         assert_eq!(bones, bones_cpy);
         assert_eq!(morphs, morphs_cpy);
+        assert_eq!(frames, frames_cpy);
+        assert_eq!(rigid_bodies, rigid_bodies_cpy);
+        assert_eq!(joints, joints_cpy);
     }
 }

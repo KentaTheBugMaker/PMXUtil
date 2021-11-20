@@ -1,7 +1,7 @@
 use crate::binary_writer::binary_writer::BinaryWriter;
-use crate::pmx_types::pmx_types::{
+use crate::pmx_types::{
     PMXBone, PMXFace, PMXFrame, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph,
-    PMXRigid, PMXTextureList, PMXVertex,PMXVertexWeight,
+    PMXRigid, PMXTextureList, PMXVertex, PMXVertexWeight,
 };
 use std::io::Write;
 use std::path::Path;
@@ -121,7 +121,7 @@ impl PMXWriter {
         let vertex = data_set
             .vertices
             .iter()
-            .find(|vertex| matches!(vertex.weight_type, PMXVertexWeight::QDEF{..}));
+            .find(|vertex| matches!(vertex.weight_type, PMXVertexWeight::QDEF { .. }));
         let material = data_set.materials.iter().find(|material| {
             (material.draw_mode & 0x20 == 0x20)
                 | (material.draw_mode & 0x40 == 0x40)

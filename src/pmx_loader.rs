@@ -4,8 +4,8 @@ use std::path::Path;
 ///The first stage loader is PMXLoader
 ///To avoid crash you can not return to previous loader (API protected)
 use crate::binary_reader::BinaryReader;
-use crate::pmx_types::pmx_types::PMXVertexWeight::BDEF4;
-use crate::pmx_types::pmx_types::{
+use crate::pmx_types::PMXVertexWeight::BDEF4;
+use crate::pmx_types::{
     BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
     PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial,
     PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody,

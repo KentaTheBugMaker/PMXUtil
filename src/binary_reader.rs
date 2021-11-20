@@ -5,7 +5,7 @@ use std::intrinsics::transmute;
 use std::io::{BufReader, Error, Read};
 use std::path::Path;
 
-use crate::pmx_types::pmx_types::{Encode, PMXHeaderC, PMXJointParameterRaw, Vec2, Vec3, Vec4};
+use crate::pmx_types::{Encode, PMXHeaderC, PMXJointParameterRaw, Vec2, Vec3, Vec4};
 
 use self::encoding::{DecoderTrap, Encoding};
 
