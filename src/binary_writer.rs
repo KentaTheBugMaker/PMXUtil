@@ -5,16 +5,13 @@ use std::io::Write;
 use std::mem::transmute;
 use std::path::Path;
 
-use crate::pmx_types::{
-    BoneMorph, FlipMorph, GroupMorph, ImpulseMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
-    PMXFrame, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXMorph, PMXRigid,
-    PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyForm,
-    PMXSphereModeRaw, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
-    BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
-    BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
-    BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
+use crate::types::{
+    BoneMorph, FlipMorph, GroupMorph, ImpulseMorph, MaterialMorph, MorphTypes, PMXBone,
+    PMXBoneFlags, PMXFace, PMXFrame, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXMorph,
+    PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyForm,
+    PMXSphereModeKind, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
 };
-use crate::pmx_types::{Vec2, Vec3, Vec4};
+use crate::types::{Vec2, Vec3, Vec4};
 
 /// This is internal use only struct
 /// Do not use this struct
@@ -22,16 +19,17 @@ pub(crate) struct BinaryWriter {
     pub(crate) inner: BufWriter<File>,
     pub(crate) is_utf16: bool,
 }
+
 macro_rules! write_bin {
     ($F:ident,$T:ty) => {
         ///Macro implemented member for internal use
         pub(crate) fn $F(&mut self, value: $T) {
-            let mut buf = [0u8; std::mem::size_of::<$T>()];
-            unsafe { buf = transmute(value) };
+            let buf: [u8; std::mem::size_of::<$T>()] = unsafe { transmute(value) };
             self.inner.write_all(&buf).unwrap();
         }
     };
 }
+
 impl BinaryWriter {
     pub fn create<P: AsRef<Path>>(path: P, is_utf16: bool) -> Result<BinaryWriter, Error> {
         //   let file = File::open(&path);
@@ -46,6 +44,7 @@ impl BinaryWriter {
             Err(err) => Err(err),
         }
     }
+
     pub(crate) fn write_vec(&mut self, v: &[u8]) {
         self.inner.write_all(v).unwrap();
     }
@@ -53,9 +52,11 @@ impl BinaryWriter {
     pub(crate) fn write_text_buf(&mut self, text: &str) {
         let len = text.len();
         if self.is_utf16 {
-            let bytes = encoding_rs::UTF_16LE.encode(text).0;
-            self.write_i32(bytes.len() as i32);
-            self.write_vec(&bytes)
+            let cv: Vec<u16> = text.encode_utf16().map(|ch| ch.to_le()).collect();
+            self.write_i32((cv.len() * 2) as i32);
+            for ch in cv {
+                self.write_u16(ch);
+            }
         } else {
             self.write_i32(len as i32);
             self.write_vec(text.as_bytes());
@@ -99,30 +100,32 @@ impl BinaryWriter {
         self.write_vec3(material.specular);
         self.write_f32(material.specular_factor);
         self.write_vec3(material.ambient);
-        self.write_u8(material.draw_mode);
+        self.write_u8(material.draw_mode.bits());
         self.write_vec4(material.edge_color);
         self.write_f32(material.edge_size);
         self.write_sized(s_texture_index, material.texture_index);
-        self.write_sized(s_texture_index, material.sphere_mode_texture_index);
-
-        let spmode = match material.sphere_mode {
-            PMXSphereModeRaw::None => 0u8,
-            PMXSphereModeRaw::Mul => 1u8,
-            PMXSphereModeRaw::Add => 2u8,
-            PMXSphereModeRaw::SubTexture => 3u8,
-        };
-        self.write_u8(spmode);
-        let toonmode = match material.toon_mode {
-            PMXToonModeRaw::Separate => 0u8,
-            PMXToonModeRaw::Common => 1u8,
-        };
-        self.write_u8(toonmode);
-        match material.toon_mode {
-            PMXToonModeRaw::Separate => {
-                self.write_sized(s_texture_index, material.toon_texture_index)
-            }
-            PMXToonModeRaw::Common => self.write_sized(1, material.toon_texture_index),
+        if let Some(sp_mode) = material.sphere_mode {
+            self.write_sized(s_texture_index, sp_mode.index);
+            self.write_u8(match sp_mode.kind {
+                PMXSphereModeKind::Mul => 1,
+                PMXSphereModeKind::Add => 2,
+                PMXSphereModeKind::SubTexture => 3,
+            });
+        } else {
+            self.write_sized(s_texture_index, -1);
+            self.write_u8(0);
         }
+        match material.toon_mode {
+            PMXToonMode::Separate(idx) => {
+                self.write_u8(0);
+                self.write_sized(s_texture_index, idx);
+            }
+            PMXToonMode::Common(idx) => {
+                self.write_u8(1);
+                self.write_u8(idx as u8);
+            }
+        }
+
         self.write_text_buf(&material.memo);
         self.write_i32(material.num_face_vertices)
     }
@@ -136,10 +139,9 @@ impl BinaryWriter {
         self.write_vec3(vertex.position);
         self.write_vec3(vertex.norm);
         self.write_vec2(vertex.uv);
-        if additional_uvs > 0 {
-            for i in 0..additional_uvs {
-                self.write_vec4(vertex.add_uv[i as usize]);
-            }
+
+        for i in 0..additional_uvs {
+            self.write_vec4(vertex.add_uv[i as usize]);
         }
 
         let weight_type = match vertex.weight_type {
@@ -236,27 +238,36 @@ impl BinaryWriter {
         self.write_vec3(bone.position);
         self.write_sized(s_bone_index, bone.parent);
         self.write_i32(bone.deform_depth);
-        self.write_u16(bone.boneflag);
-        if (bone.boneflag & BONE_FLAG_TARGET_SHOW_MODE_MASK) == BONE_FLAG_TARGET_SHOW_MODE_MASK {
+        self.write_u16(bone.boneflag.bits());
+        if bone
+            .boneflag
+            .intersects(PMXBoneFlags::CONNECT_TO_OTHER_BONE)
+        {
             self.write_sized(s_bone_index, bone.child);
         } else {
             self.write_vec3(bone.offset);
         }
-        if bone.boneflag & (BONE_FLAG_APPEND_ROTATE_MASK | BONE_FLAG_APPEND_TRANSLATE_MASK) > 0 {
+        if bone
+            .boneflag
+            .intersects(PMXBoneFlags::INHERIT_ROTATION | PMXBoneFlags::INHERIT_TRANSLATION)
+        {
             self.write_sized(s_bone_index, bone.append_bone_index);
             self.write_f32(bone.append_weight);
         }
-        if (bone.boneflag & BONE_FLAG_FIXED_AXIS_MASK) == BONE_FLAG_FIXED_AXIS_MASK {
+        if bone.boneflag.intersects(PMXBoneFlags::FIXED_AXIS) {
             self.write_vec3(bone.fixed_axis);
         }
-        if (bone.boneflag & BONE_FLAG_LOCAL_AXIS_MASK) == BONE_FLAG_LOCAL_AXIS_MASK {
+        if bone.boneflag.intersects(PMXBoneFlags::LOCAL_COORDINATE) {
             self.write_vec3(bone.local_axis_x);
             self.write_vec3(bone.local_axis_z);
         }
-        if (bone.boneflag & BONE_FLAG_DEFORM_OUTER_PARENT_MASK) > 0 {
+        if bone
+            .boneflag
+            .intersects(PMXBoneFlags::EXTERNAL_PARENT_DEFORM)
+        {
             self.write_i32(bone.key_value);
         }
-        if (bone.boneflag & BONE_FLAG_IK_MASK) == BONE_FLAG_IK_MASK {
+        if bone.boneflag.intersects(PMXBoneFlags::IK) {
             self.write_sized(s_bone_index, bone.ik_target_index);
             self.write_i32(bone.ik_iter_count);
             self.write_f32(bone.ik_limit);
@@ -265,6 +276,40 @@ impl BinaryWriter {
                 self.write_ik_link(s_bone_index, ik_link);
             }
         }
+        /*
+        if (bone.boneflag & BONE_FLAG_TARGET_SHOW_MODE_MASK) == BONE_FLAG_TARGET_SHOW_MODE_MASK {
+            self.write_sized(s_bone_index, bone.child);
+        } else {
+            self.write_vec3(bone.offset);
+        }*/
+        /*
+        if bone.boneflag & (BONE_FLAG_APPEND_ROTATE_MASK | BONE_FLAG_APPEND_TRANSLATE_MASK) > 0 {
+            self.write_sized(s_bone_index, bone.append_bone_index);
+            self.write_f32(bone.append_weight);
+        }
+        */
+        /*
+        if (bone.boneflag & BONE_FLAG_FIXED_AXIS_MASK) == BONE_FLAG_FIXED_AXIS_MASK {
+            self.write_vec3(bone.fixed_axis);
+        }
+        if (bone.boneflag & BONE_FLAG_LOCAL_AXIS_MASK) == BONE_FLAG_LOCAL_AXIS_MASK {
+            self.write_vec3(bone.local_axis_x);
+            self.write_vec3(bone.local_axis_z);
+        }*/
+        /*
+        if (bone.boneflag & BONE_FLAG_DEFORM_OUTER_PARENT_MASK) > 0 {
+            self.write_i32(bone.key_value);
+        }*/
+        /*
+        if (bone.boneflag & BONE_FLAG_IK_MASK) == BONE_FLAG_IK_MASK {
+            self.write_sized(s_bone_index, bone.ik_target_index);
+            self.write_i32(bone.ik_iter_count);
+            self.write_f32(bone.ik_limit);
+            self.write_i32(bone.ik_links.len() as i32);
+            for ik_link in bone.ik_links {
+                self.write_ik_link(s_bone_index, ik_link);
+            }
+        }*/
     }
 
     pub(crate) fn write_pmx_morph(
@@ -397,7 +442,7 @@ impl BinaryWriter {
         self.write_text_buf(&joint.name_en);
         let kind = match joint.joint_type {
             PMXJointType::Spring6DOF { .. } => 0,
-            PMXJointType::_6DOF { .. } => 1,
+            PMXJointType::SixDof { .. } => 1,
             PMXJointType::P2P { .. } => 2,
             PMXJointType::ConeTwist { .. } => 3,
             PMXJointType::Slider { .. } => 4,
@@ -428,7 +473,7 @@ impl BinaryWriter {
                 self.write_vec3(spring_const_move);
                 self.write_vec3(spring_const_rotation);
             }
-            PMXJointType::_6DOF {
+            PMXJointType::SixDof {
                 a_rigid_index,
                 b_rigid_index,
                 position,
@@ -651,7 +696,6 @@ impl BinaryWriter {
     write_bin!(write_vec2, Vec2);
     write_bin!(write_f32, f32);
     write_bin!(write_i32, i32);
-    write_bin!(write_u32, u32);
     write_bin!(write_i16, i16);
     write_bin!(write_u16, u16);
     write_bin!(write_i8, i8);

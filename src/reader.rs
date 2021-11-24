@@ -1,23 +1,52 @@
+//! # PMX loading module.
+//! this module separated to some parts.To avoid invalid loading.
+//!
+//! |Current stage|product|Next stage|
+//! |-------------|-------|----------|
+//! |[ModelInfoReader]|[PMXModelInfo]|[VerticesReader]|
+//! |[VerticesReader]|[`Vec<PMXVertex>`]|[FacesReader]|
+//! |[FacesReader]|[`Vec<PMXFace>`]|[TexturesReader]|
+//! |[TexturesReader]|[PMXTextureList]|[MaterialsReader]|
+//! |[MaterialsReader]|[`Vec<PMXMaterial>`]|[BonesReader]|
+//! |[BonesReader]|[`Vec<PMXBone>`]|[MorphsReader]|
+//! |[MorphsReader]|[`Vec<PMXMorph>`]|[FrameReader]|
+//! |[FrameReader]|[`Vec<PMXFrame>`]|[RigidReader]|
+//! |[RigidReader]|[`Vec<PMXRigid>`]|[`JointReader`]|
+//! |[JointReader]|[`Vec<PMXJoint>`]|[`Option<SoftBodyReader>`]|
+//!
+//! ```rust
+//! // i want to get pmx path from env vars.
+//! let path = std::env::var("PMX_FILE").unwrap();
+//! let model_info_loader=pmx_util::reader::PMXReader::open(path);
+//! let (model_info,vertices_loader)=model_info_loader.unwrap().read();
+//! ```
+//!
+
 use std::path::Path;
 
-///Loader for pmx files
-///The first stage loader is PMXLoader
-///To avoid crash you can not return to previous loader (API protected)
 use crate::binary_reader::BinaryReader;
-use crate::pmx_types::PMXVertexWeight::BDEF4;
-use crate::pmx_types::{
-    BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXFace,
-    PMXFrame, PMXHeaderC, PMXHeaderRust, PMXIKLink, PMXJoint, PMXJointParameterRaw, PMXJointType,
-    PMXMaterial, PMXModelInfo, PMXMorph, PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody,
-    PMXSoftBodyAeroModel, PMXSoftBodyAnchorRigid, PMXSoftBodyForm, PMXSphereModeRaw,
-    PMXTextureList, PMXToonModeRaw, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
-    BONE_FLAG_APPEND_ROTATE_MASK, BONE_FLAG_APPEND_TRANSLATE_MASK,
-    BONE_FLAG_DEFORM_OUTER_PARENT_MASK, BONE_FLAG_FIXED_AXIS_MASK, BONE_FLAG_IK_MASK,
-    BONE_FLAG_LOCAL_AXIS_MASK, BONE_FLAG_TARGET_SHOW_MODE_MASK,
+use crate::types::{
+    BoneMorph, Encode, FrameInner, GroupMorph, MaterialMorph, MorphTypes, PMXBone, PMXBoneFlags,
+    PMXFace, PMXFrame, PMXHeader, PMXHeaderRaw, PMXIKLink, PMXJoint, PMXJointParameterRaw,
+    PMXJointType, PMXMaterial, PMXMaterialFlags, PMXModelInfo, PMXMorph, PMXRigid,
+    PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyAnchorRigid,
+    PMXSoftBodyForm, PMXSphereMode, PMXSphereModeKind, PMXTextureList, PMXToonMode, PMXVertex,
+    PMXVertexWeight, UVMorph, VertexMorph,
 };
 
-fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
-    let mut ctx = PMXHeaderRust {
+///
+/// translate rustic header from raw header
+///
+/// # Arguments
+///
+/// * `header`: c header
+///
+/// returns: Option<PMXHeaderRust>
+///
+/// if invalid signature detected return None.
+///
+fn transform_header_c2r(header: PMXHeaderRaw) -> Option<PMXHeader> {
+    let mut ctx = PMXHeader {
         magic: "".to_string(),
         version: 0.0,
         length: 0,
@@ -31,6 +60,10 @@ fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
         s_rigid_body_index: 0,
     };
     ctx.magic = String::from_utf8_lossy(&header.magic).to_string();
+    // if invalid signature detected
+    if ctx.magic != *"PMX " {
+        return None;
+    }
     ctx.version = header.version;
     ctx.length = header.length;
     ctx.encode = match header.config[0] {
@@ -45,44 +78,52 @@ fn transform_header_c2r(header: PMXHeaderC) -> PMXHeaderRust {
     ctx.s_bone_index = header.config[5];
     ctx.s_morph_index = header.config[6];
     ctx.s_rigid_body_index = header.config[7];
-    ctx
+    Some(ctx)
 }
 
-pub struct PMXLoader {
-    header: PMXHeaderRust,
+pub struct PMXReader {
+    header: PMXHeader,
 }
-impl PMXLoader {
-    ///```rust
-    /// let modelinfo_loader=PMXLoader::open("/path/to/pmxfile");
-    /// let (modelinfo,vertices_loader)=modelinfo_loader.read_pmx_model_info();
-    /// let (vertices,faces_loader)=vertices_loader.read_pmx_vertices();
-    ///```
-    /// Start pmx loading . Return  next stage and you can not back to previous stage
-    pub fn open<P: AsRef<Path>>(path: P) -> ModelInfoLoader {
-        let mut inner = BinaryReader::open(path).unwrap();
-        let header = inner.read_PMXHeader_raw();
-        let header_rs = transform_header_c2r(header);
-        ModelInfoLoader {
+impl PMXReader {
+    /// the start of reader module.
+    /// # None
+    /// * invalid path given
+    /// * read PMX magic number is not `PMX `
+    /// # Arguments
+    ///
+    /// * `path`: path to pmx file.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let path = std::env::var("PMX_FILE").unwrap();
+    /// let model_info_loader = pmx_util::reader::PMXReader::open(path).unwrap();
+    /// ```
+    pub fn open<P: AsRef<Path>>(path: P) -> Option<ModelInfoReader> {
+        let mut inner = BinaryReader::open(path).ok()?;
+        let header = inner.read_raw_header();
+        let header_rs = transform_header_c2r(header)?;
+        Some(ModelInfoReader {
             header: header_rs,
             inner,
-        }
+        })
     }
     /// Get Header Information
-    pub fn get_header(&self) -> PMXHeaderRust {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
 }
-pub struct ModelInfoLoader {
-    header: PMXHeaderRust,
+pub struct ModelInfoReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl ModelInfoLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl ModelInfoReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    /// Read model information name , international name, comment , and international comment.
-    /// Next stage is VerticesLoader .
-    pub fn read_pmx_model_info(mut self) -> (PMXModelInfo, VerticesLoader) {
+
+    pub fn read(mut self) -> (PMXModelInfo, VerticesReader) {
         let enc = self.header.encode;
         (
             PMXModelInfo {
@@ -91,31 +132,30 @@ impl ModelInfoLoader {
                 comment: self.inner.read_text_buf(enc),
                 comment_en: self.inner.read_text_buf(enc),
             },
-            VerticesLoader {
+            VerticesReader {
                 header: self.header,
                 inner: self.inner,
             },
         )
     }
 }
-pub struct VerticesLoader {
-    header: PMXHeaderRust,
+pub struct VerticesReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl VerticesLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl VerticesReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    /// Read vertices position normal uv(texture coord ) etc.
-    /// Next stage is FacesLoader
-    pub fn read_pmx_vertices(mut self) -> (Vec<PMXVertex>, FacesLoader) {
+
+    pub fn read(mut self) -> (Vec<PMXVertex>, FacesReader) {
         let verts = self.inner.read_i32();
         let mut v = Vec::with_capacity(verts as usize);
         for _ in 0..verts {
             v.push(self.read_pmx_vertex());
         }
         assert_eq!(verts as usize, v.len());
-        let faceloader = FacesLoader {
+        let faceloader = FacesReader {
             header: self.header,
             inner: self.inner,
         };
@@ -167,7 +207,7 @@ impl VerticesLoader {
                 let bone_weight_2 = self.inner.read_f32();
                 let bone_weight_3 = self.inner.read_f32();
                 let bone_weight_4 = self.inner.read_f32();
-                BDEF4 {
+                PMXVertexWeight::BDEF4 {
                     bone_index_1,
                     bone_index_2,
                     bone_index_3,
@@ -224,17 +264,16 @@ impl VerticesLoader {
         ctx
     }
 }
-pub struct FacesLoader {
-    header: PMXHeaderRust,
+pub struct FacesReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl FacesLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl FacesReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    /// Read faces similer to index buffer
-    /// Next self is TexturesLoader
-    pub fn read_pmx_faces(mut self) -> (Vec<PMXFace>, TexturesLoader) {
+
+    pub fn read(mut self) -> (Vec<PMXFace>, TexturesReader) {
         let mut v = vec![];
         let faces = self.inner.read_i32();
         let s_vertex_index = self.header.s_vertex_index;
@@ -248,7 +287,7 @@ impl FacesLoader {
             });
         }
         assert_eq!(v.len(), faces as usize);
-        let next_self = TexturesLoader {
+        let next_self = TexturesReader {
             header: self.header,
             inner: self.inner,
         };
@@ -256,55 +295,53 @@ impl FacesLoader {
     }
 }
 
-pub struct TexturesLoader {
-    header: PMXHeaderRust,
+pub struct TexturesReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl TexturesLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl TexturesReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    /// Read relative path from current reading file
-    /// in some case path contains /
-    /// you should replace path separator to system path separator
-    /// Next stage is MaterialsLoader
-    pub fn read_texture_list(mut self) -> (PMXTextureList, MaterialsLoader) {
+
+    /// Read relative texture path from current reading file
+    pub fn read(mut self) -> (PMXTextureList, MaterialsReader) {
         let textures = self.inner.read_i32();
         let mut v = vec![];
         for _ in 0..textures {
             v.push(self.inner.read_text_buf(self.header.encode));
         }
-        let next_self = MaterialsLoader {
+        let next_self = MaterialsReader {
             header: self.header,
             inner: self.inner,
         };
         (PMXTextureList { textures: v }, next_self)
     }
 }
-pub struct MaterialsLoader {
-    header: PMXHeaderRust,
+pub struct MaterialsReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl MaterialsLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl MaterialsReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    ///Read material information name ambient diffuse specular etc parameters.
+    ///Read material's information contains name ambient diffuse specular etc parameters.
     /// for exact model rendering you should passed to shader and processed proper.
-    ///Next stage is BonesLoader
-    pub fn read_pmx_materials(mut self) -> (Vec<PMXMaterial>, BonesLoader) {
+    pub fn read(mut self) -> (Vec<PMXMaterial>, BonesReader) {
         let mut materials = vec![];
         let counts = self.inner.read_i32();
         for _ in 0..counts {
             let material = self.read_pmx_material();
             materials.push(material);
         }
-        let next_self = BonesLoader {
+        let next_self = BonesReader {
             header: self.header,
             inner: self.inner,
         };
         (materials, next_self)
     }
+
     fn read_pmx_material(&mut self) -> PMXMaterial {
         let s_texture_index = self.header.s_texture_index;
         let mut ctx = PMXMaterial {
@@ -314,14 +351,12 @@ impl MaterialsLoader {
             specular: [0.0f32; 3],
             specular_factor: 0.0,
             ambient: [0.0f32; 3],
-            draw_mode: 0,
+            draw_mode: PMXMaterialFlags::from_bits_truncate(0),
             edge_color: [0.0f32; 4],
             edge_size: 0.0,
             texture_index: 0,
-            sphere_mode_texture_index: 0,
-            sphere_mode: PMXSphereModeRaw::None,
-            toon_mode: PMXToonModeRaw::Separate,
-            toon_texture_index: 0,
+            sphere_mode: None,
+            toon_mode: PMXToonMode::Common(0),
             memo: "".to_string(),
             num_face_vertices: 0,
         };
@@ -331,48 +366,54 @@ impl MaterialsLoader {
         ctx.specular = self.inner.read_vec3();
         ctx.specular_factor = self.inner.read_f32();
         ctx.ambient = self.inner.read_vec3();
-        ctx.draw_mode = self.inner.read_u8();
+        ctx.draw_mode = PMXMaterialFlags::from_bits_truncate(self.inner.read_u8());
         ctx.edge_color = self.inner.read_vec4();
         ctx.edge_size = self.inner.read_f32();
         ctx.texture_index = self.inner.read_sized(s_texture_index).unwrap();
-        ctx.sphere_mode_texture_index = self.inner.read_sized(s_texture_index).unwrap();
+        let ti = self.inner.read_sized(s_texture_index).unwrap();
         let spmode = self.inner.read_u8();
         ctx.sphere_mode = match spmode {
-            0 => PMXSphereModeRaw::None,
-            1 => PMXSphereModeRaw::Mul,
-            2 => PMXSphereModeRaw::Add,
-            3 => PMXSphereModeRaw::SubTexture,
+            0 => None,
+            1 => Some(PMXSphereMode {
+                index: ti,
+                kind: PMXSphereModeKind::Mul,
+            }),
+            2 => Some(PMXSphereMode {
+                index: ti,
+                kind: PMXSphereModeKind::Add,
+            }),
+            3 => Some(PMXSphereMode {
+                index: ti,
+                kind: PMXSphereModeKind::SubTexture,
+            }),
             _ => {
                 panic!("Error Unknown SphereMode:{}", spmode);
             }
         };
+
         let toonmode = self.inner.read_u8();
         ctx.toon_mode = match toonmode {
-            0 => PMXToonModeRaw::Separate,
-            1 => PMXToonModeRaw::Common,
+            0 => PMXToonMode::Separate(self.inner.read_sized(s_texture_index).unwrap()),
+            1 => PMXToonMode::Common(self.inner.read_u8()),
             _ => panic!("Error Unknown Toon flag:{}", toonmode),
-        };
-        ctx.toon_texture_index = match ctx.toon_mode {
-            PMXToonModeRaw::Separate => self.inner.read_sized(s_texture_index).unwrap(),
-            PMXToonModeRaw::Common => self.inner.read_u8() as i32,
         };
         ctx.memo = self.inner.read_text_buf(self.header.encode);
         ctx.num_face_vertices = self.inner.read_i32();
         ctx
     }
 }
-pub struct BonesLoader {
-    header: PMXHeaderRust,
+pub struct BonesReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl BonesLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl BonesReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    /// read bone information parent child IK etc.
+
+    /// read bone's information parent child IK etc.
     /// Exact model pose you should process this parameter and pass to PhisicsEngine e.g. bullet havok
-    /// Next stage is MorphsLoader
-    pub fn read_pmx_bones(mut self) -> (Vec<PMXBone>, MorphsLoader) {
+    pub fn read(mut self) -> (Vec<PMXBone>, MorphsReader) {
         let mut bones = vec![];
         let count = self.inner.read_i32();
 
@@ -381,7 +422,7 @@ impl BonesLoader {
             bones.push(bone);
         }
 
-        let next_self = MorphsLoader {
+        let next_self = MorphsReader {
             header: self.header,
             inner: self.inner,
         };
@@ -396,7 +437,7 @@ impl BonesLoader {
             position: [0.0f32; 3],
             parent: 0,
             deform_depth: 0,
-            boneflag: 0,
+            boneflag: PMXBoneFlags::from_bits_truncate(0),
             offset: [0.0f32; 3],
             child: 0,
             append_bone_index: 0,
@@ -415,44 +456,42 @@ impl BonesLoader {
         ctx.position = self.inner.read_vec3();
         ctx.parent = self.inner.read_sized(s_bone_index).unwrap();
         ctx.deform_depth = self.inner.read_i32();
-        ctx.boneflag = self.inner.read_u16();
-        //
-        if (ctx.boneflag & BONE_FLAG_TARGET_SHOW_MODE_MASK) == BONE_FLAG_TARGET_SHOW_MODE_MASK {
+        ctx.boneflag = PMXBoneFlags::from_bits_truncate(self.inner.read_u16());
+
+        if ctx.boneflag.intersects(PMXBoneFlags::CONNECT_TO_OTHER_BONE) {
             ctx.child = self.inner.read_sized(s_bone_index).unwrap();
         } else {
             ctx.offset = self.inner.read_vec3();
         }
-        //Append rotate or Append translate
-        if ctx.boneflag & (BONE_FLAG_APPEND_ROTATE_MASK | BONE_FLAG_APPEND_TRANSLATE_MASK) > 0 {
+        if ctx
+            .boneflag
+            .intersects(PMXBoneFlags::INHERIT_TRANSLATION | PMXBoneFlags::INHERIT_ROTATION)
+        {
             ctx.append_bone_index = self.inner.read_sized(s_bone_index).unwrap();
             ctx.append_weight = self.inner.read_f32();
         }
-        //Fixed Axis
-        if (ctx.boneflag & BONE_FLAG_FIXED_AXIS_MASK) == BONE_FLAG_FIXED_AXIS_MASK {
+        if ctx.boneflag.intersects(PMXBoneFlags::FIXED_AXIS) {
             ctx.fixed_axis = self.inner.read_vec3();
         }
-        //Local Axis
-        if (ctx.boneflag & BONE_FLAG_LOCAL_AXIS_MASK) == BONE_FLAG_LOCAL_AXIS_MASK {
+        if ctx.boneflag.intersects(PMXBoneFlags::LOCAL_COORDINATE) {
             ctx.local_axis_x = self.inner.read_vec3();
             ctx.local_axis_z = self.inner.read_vec3();
         }
-        //outer deform
-        if (ctx.boneflag & BONE_FLAG_DEFORM_OUTER_PARENT_MASK) > 0 {
+        if ctx
+            .boneflag
+            .intersects(PMXBoneFlags::EXTERNAL_PARENT_DEFORM)
+        {
             ctx.key_value = self.inner.read_i32();
         }
-        //IK flag on
-        if (ctx.boneflag & BONE_FLAG_IK_MASK) == BONE_FLAG_IK_MASK {
+        if ctx.boneflag.intersects(PMXBoneFlags::IK) {
             ctx.ik_target_index = self.inner.read_sized(s_bone_index).unwrap();
             ctx.ik_iter_count = self.inner.read_i32();
             ctx.ik_limit = self.inner.read_f32();
-            let ik_link_count = self.inner.read_i32();
-            let mut ik_s = Vec::with_capacity(ik_link_count as usize);
-            for _ in 0..ik_link_count {
-                ik_s.push(self.read_iklink());
+            for _ in 0..self.inner.read_i32() {
+                ctx.ik_links.push(self.read_iklink())
             }
-            ctx.ik_links = ik_s;
-            assert_eq!(ctx.ik_links.len(), ik_link_count as usize);
         }
+
         ctx
     }
     fn read_iklink(&mut self) -> PMXIKLink {
@@ -472,26 +511,20 @@ impl BonesLoader {
     }
 }
 
-pub struct MorphsLoader {
-    header: PMXHeaderRust,
+pub struct MorphsReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl MorphsLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl MorphsReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    pub fn read_pmx_morphs(mut self) -> (Vec<PMXMorph>, FrameLoader) {
-        let mut morphs = vec![];
-        let count = self.inner.read_i32();
-
-        for _ in 0..count {
-            let bone = self.read_pmx_morph();
-            morphs.push(bone);
-        }
-
+    pub fn read(mut self) -> (Vec<PMXMorph>, FrameReader) {
         (
-            morphs,
-            FrameLoader {
+            (0..self.inner.read_i32())
+                .map(|_| self.read_pmx_morph())
+                .collect(),
+            FrameReader {
                 header: self.header,
                 inner: self.inner,
             },
@@ -599,16 +632,18 @@ impl MorphsLoader {
         ctx
     }
 }
-pub struct FrameLoader {
-    header: PMXHeaderRust,
+pub struct FrameReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
 
-impl FrameLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl FrameReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    pub fn read_frames(mut self) -> (Vec<PMXFrame>, RigidLoader) {
+    /// read MMD 's controller
+    /// next stage is RigidReader
+    pub fn read(mut self) -> (Vec<PMXFrame>, RigidReader) {
         let count = self.inner.read_i32();
         let mut frames = vec![];
         for _ in 0..count {
@@ -637,22 +672,22 @@ impl FrameLoader {
         }
         (
             frames,
-            RigidLoader {
+            RigidReader {
                 header: self.header,
                 inner: self.inner,
             },
         )
     }
 }
-pub struct RigidLoader {
-    header: PMXHeaderRust,
+pub struct RigidReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
-impl RigidLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl RigidReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    pub fn read_rigids(mut self) -> (Vec<PMXRigid>, JointLoader) {
+    pub fn read(mut self) -> (Vec<PMXRigid>, JointReader) {
         let len = self.inner.read_i32();
         let mut bodies = Vec::with_capacity(len as usize);
         for _ in 0..len {
@@ -705,7 +740,7 @@ impl RigidLoader {
         }
         (
             bodies,
-            JointLoader {
+            JointReader {
                 header: self.header,
                 inner: self.inner,
             },
@@ -713,16 +748,16 @@ impl RigidLoader {
     }
 }
 
-pub struct JointLoader {
-    header: PMXHeaderRust,
+pub struct JointReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
 
-impl JointLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl JointReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    pub fn read_joints(mut self) -> (Vec<PMXJoint>, Option<SoftBodyLoader>) {
+    pub fn read(mut self) -> (Vec<PMXJoint>, Option<SoftBodyReader>) {
         let len = self.inner.read_i32();
         let mut joints = Vec::with_capacity(len as usize);
         for _ in 0..len {
@@ -730,7 +765,7 @@ impl JointLoader {
         }
         let next_loader = if self.header.version > 2.0 {
             //this file contains softbody section
-            Some(SoftBodyLoader {
+            Some(SoftBodyReader {
                 header: self.header,
                 inner: self.inner,
             })
@@ -779,7 +814,7 @@ impl JointLoader {
                 spring_const_move: raw_parameter.spring_const_move,
                 spring_const_rotation: raw_parameter.spring_const_rotation,
             },
-            1 => PMXJointType::_6DOF {
+            1 => PMXJointType::SixDof {
                 a_rigid_index: raw_parameter.a_rigid_index,
                 b_rigid_index: raw_parameter.b_rigid_index,
                 position: raw_parameter.position,
@@ -848,16 +883,16 @@ impl JointLoader {
     }
 }
 
-pub struct SoftBodyLoader {
-    header: PMXHeaderRust,
+pub struct SoftBodyReader {
+    header: PMXHeader,
     inner: BinaryReader,
 }
 
-impl SoftBodyLoader {
-    pub fn get_header(&self) -> PMXHeaderRust {
+impl SoftBodyReader {
+    pub fn get_header(&self) -> PMXHeader {
         self.header.clone()
     }
-    pub fn read_pmx_soft_bodies(mut self) -> Vec<PMXSoftBody> {
+    pub fn read(mut self) -> Vec<PMXSoftBody> {
         let n_soft_bodies = self.inner.read_i32();
         let mut soft_bodies = Vec::with_capacity(n_soft_bodies as usize);
         for _ in 0..n_soft_bodies {

@@ -1,9 +1,18 @@
+use crate::types::{Encode, PMXHeaderRaw, Vec2, Vec3, Vec4};
 use std::fs::File;
-use std::intrinsics::transmute;
 use std::io::{BufReader, Error, Read};
+use std::mem::transmute;
 use std::path::Path;
 
-use crate::pmx_types::{Encode, PMXHeaderC, PMXJointParameterRaw, Vec2, Vec3, Vec4};
+macro_rules! read_bin {
+    ($F:ident,$T:ty) => {
+        pub(crate) fn $F(&mut self) -> $T {
+            let mut buf = [0u8; std::mem::size_of::<$T>()];
+            self.inner.read_exact(&mut buf).unwrap();
+            unsafe { transmute(buf) }
+        }
+    };
+}
 
 pub(crate) struct BinaryReader {
     inner: BufReader<File>,
@@ -44,27 +53,47 @@ impl BinaryReader {
             _ => None,
         }
     }
+
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `n`: 1, 2 or 4 accepted
+    ///
+    /// returns: Option<i32>
+    ///
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
     pub(crate) fn read_sized(&mut self, n: u8) -> Option<i32> {
         match n {
             1 => {
+                Some(self.read_i8() as i32)
+                /*
                 let tmp = self.read_u8();
                 if tmp != 0xff {
                     Some(tmp as i32)
                 } else {
                     Some(-1)
-                }
+                }*/
             }
             2 => {
+                /*
                 let tmp = self.read_u16();
                 if tmp != 0xffff {
                     Some(tmp as i32)
                 } else {
                     Some(-1)
-                }
+                }*/
+                Some(self.read_i16() as i32)
             }
             4 => {
+                /*
                 let tmp = self.read_u32();
-                Some(tmp as i32)
+                Some(tmp as i32)*/
+                Some(self.read_i32())
             }
             _ => None,
         }
@@ -72,10 +101,9 @@ impl BinaryReader {
     read_bin!(read_vec4, Vec4);
     read_bin!(read_vec3, Vec3);
     read_bin!(read_vec2, Vec2);
-    read_bin!(read_PMXHeader_raw, PMXHeaderC);
+    read_bin!(read_raw_header, PMXHeaderRaw);
     read_bin!(read_f32, f32);
     read_bin!(read_i32, i32);
-    read_bin!(read_u32, u32);
     read_bin!(read_i16, i16);
     read_bin!(read_u16, u16);
     read_bin!(read_i8, i8);

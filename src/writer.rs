@@ -1,5 +1,5 @@
 use crate::binary_writer::BinaryWriter;
-use crate::pmx_types::{
+use crate::types::{
     PMXBone, PMXFace, PMXFrame, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph,
     PMXRigid, PMXSoftBody, PMXVertex, PMXVertexWeight,
 };
@@ -9,11 +9,12 @@ use std::path::Path;
 /// This hold all PMX ingredient Vertex Face Texture Path etc.
 /// When write was called all data was wrote and drop self.
 /// ```rust
-/// let mut writer=pmx_writer::PMXWriter::begin_writer("/path/to/pmxfile");
+/// let vertices = vec![];
+/// let mut writer=pmx_util::writer::PMXWriter::begin_writer("./path_to_pmx_file.pmx",true);
 /// writer.set_model_info(Some("Name "),Some("Name international"),Some("Comment"),Some("Comment international"));
-///writer.set_additional_uv(4)// vertices contains 4 additional uv
-///writer.add_vertices(&[vertices]);
-///writer.write()
+/// writer.set_additional_uv(4);// vertices contains 4 additional uv
+/// writer.add_vertices(&vertices);
+/// writer.write()
 /// ```
 pub struct PMXWriter {
     inner: BinaryWriter,
@@ -51,6 +52,7 @@ impl PMXWriter {
             soft_bodies: vec![],
         }
     }
+
     pub fn set_model_info(
         &mut self,
         model_name: Option<&str>,
@@ -70,6 +72,16 @@ impl PMXWriter {
         };
         self.model_info = Some(model_info);
     }
+
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `count`: 0..4
+    ///
+    /// # Err
+    ///
+    ///
     pub fn set_additional_uv(&mut self, count: u8) -> Result<(), &str> {
         if count > 4 {
             Err("additional uv count is invalid")
@@ -116,7 +128,7 @@ impl PMXWriter {
     }
 
     pub fn add_soft_bodies(&mut self, soft_bodies: &[PMXSoftBody]) {
-        self.soft_bodies.extend_from_slice(&soft_bodies)
+        self.soft_bodies.extend_from_slice(soft_bodies)
     }
 
     /// Actually write data because index size optimization
@@ -133,7 +145,7 @@ impl PMXWriter {
             matches!(
                 joint.joint_type,
                 PMXJointType::Slider { .. }
-                    | PMXJointType::_6DOF { .. }
+                    | PMXJointType::SixDof { .. }
                     | PMXJointType::ConeTwist { .. }
                     | PMXJointType::Hinge { .. }
                     | PMXJointType::P2P { .. }
@@ -141,12 +153,12 @@ impl PMXWriter {
         });
         let ext_2_1 =
             vertex.is_some() | morph.is_some() | joint.is_some() | !self.soft_bodies.is_empty();
-        println!("2.1Extension:{}", ext_2_1);
+
         // generate header
         let magic = b"PMX ";
         let version = if ext_2_1 { 2.1 } else { 2.0 };
         let length = 8u8;
-        let s_vertex_index = require_bytes(self.vertices.len());
+        let s_vertex_index = require_bytes_vertex(self.vertices.len());
         let s_texture_index = require_bytes_signed(self.textures.len());
         let s_material_index = require_bytes_signed(self.materials.len());
         let s_bone_index = require_bytes_signed(self.bones.len());
@@ -162,7 +174,6 @@ impl PMXWriter {
             s_morph_index,
             s_rigid_body_index,
         ];
-        println!("s_rigid_body_index {}", s_rigid_body_index);
         //write header
         let mut writer = self.inner;
         writer.write_vec(magic);
@@ -242,18 +253,20 @@ impl PMXWriter {
                 );
             }
         }
-        writer.inner.flush();
+        writer.inner.flush().unwrap();
     }
 }
-fn require_bytes(len: usize) -> u8 {
-    if len < 0xff {
+
+fn require_bytes_vertex(len: usize) -> u8 {
+    if len < 0x100 {
         1 //8 bit
-    } else if len < 0xffff {
+    } else if len < 0x10000 {
         2 //16 bit
     } else {
         4 //32 bit
     }
 }
+
 fn require_bytes_signed(len: usize) -> u8 {
     if len < 128 {
         1 //8 bit

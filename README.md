@@ -1,5 +1,5 @@
 ### PMXUtil
-## A partial PMX loader and Writer written in Rust
+## A PMX loader and Writer written in Rust
 ### What can this crate do
   1. Parse PMX 2.0/2.1 header
   2. Parse PMX 2.0/2.1 Model Info
@@ -24,13 +24,14 @@
   17. Write Frame
   18. Write Rigid
   19. Write Joint
+  20. Write SoftBody (if 2.1 extension detected)
 ### WIP
   1. Implement Display trait
 
 ## How to Use
 ### 1. Import
 ```rust
-extern crate PMXUtil;
+extern crate pmx_util;
 use PMXUtil::pmx_loader::PMXLoader;
 ```
 ### 2. Create loader instance and read  
@@ -50,7 +51,7 @@ let (materials, ns) = ns.read_pmx_materials();
 println!("{:#?}", materials);
 ```
 ### 3 Create Writer instance and write
-    this library always write text as UTF8 byte stream
+    you can choose text encoding UTF-8 or UTF-16LE but remenber MMD only support UTF-16LE.
 
 ```rust
         let mut writer =PMXWriter::begin_writer("/path/to/pmxfile");

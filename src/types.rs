@@ -1,8 +1,9 @@
-use std::fmt::{Display, Formatter};
+use bitflags::bitflags;
 
 pub type Vec2 = [f32; 2];
 pub type Vec3 = [f32; 3];
 pub type Vec4 = [f32; 4];
+
 /// represent text encoding but all texts in pmx file are converted to String so you don't need to care
 #[repr(u8)]
 #[derive(Debug, Clone, Copy)]
@@ -10,47 +11,21 @@ pub enum Encode {
     UTF8 = 0x01,
     Utf16Le = 0x00,
 }
-/*Bone Flag*/
-pub const BONE_FLAG_TARGET_SHOW_MODE_MASK: u16 = 0x0001;
-pub const BONE_FLAG_ALLOW_ROTATE_MASK: u16 = 0x0002;
-//0b 0000 0000 0000 0010
-pub const BONE_FLAG_ALLOW_TRANSLATE_MASK: u16 = 0x0004;
-//0b 0000 0000 0000 0100
-pub const BONE_FLAG_VISIBLE_MASK: u16 = 0x0008;
-pub const BONE_FLAG_ALLOW_CONTROL_MASK: u16 = 0x0010;
-pub const BONE_FLAG_IK_MASK: u16 = 0x0020;
-pub const BONE_FLAG_APPEND_LOCAL_MASK: u16 = 0x0080;
-pub const BONE_FLAG_APPEND_ROTATE_MASK: u16 = 0x0100;
-//0b 0000 0001 0000 0000
-pub const BONE_FLAG_APPEND_TRANSLATE_MASK: u16 = 0x0200;
-//0b 0000 0010 0000 0000
-pub const BONE_FLAG_FIXED_AXIS_MASK: u16 = 0x0400;
-//0b 0000 0100 0000 0000
-pub const BONE_FLAG_LOCAL_AXIS_MASK: u16 = 0x0800;
-pub const BONE_FLAG_DEFORM_AFTER_PHYSICS_MASK: u16 = 0x1000;
-pub const BONE_FLAG_DEFORM_OUTER_PARENT_MASK: u16 = 0x2000;
-/*Material Flag*/
-const MATERIAL_DOUBLE_SIDE_MASK: u8 = 0x01;
-const MATERIAL_GROUND_SHADOW_MASK: u8 = 0x02;
-const MATERIAL_CAST_SELF_SHADOW_MASK: u8 = 0x04;
-const MATERIAL_RECEIVE_SELF_SHADOW_MASK: u8 = 0x08;
-const MATERIAL_EDGE_DRAW_MASK: u8 = 0x10;
-const MATERIAL_VERTEX_COLOR_MASK: u8 = 0x20;
-const MATERIAL_DRAW_POINT_MASK: u8 = 0x40;
-const MATERIAL_DRAW_LINE_MASK: u8 = 0x80;
+
 /// PMX仕様.txt 156~173
 #[repr(packed)]
-pub struct PMXHeaderC {
+pub struct PMXHeaderRaw {
     pub magic: [u8; 4],
     pub version: f32,
     pub length: u8,
     pub config: [u8; 8],
 }
+
 ///these are pmx file header
 /// record magic number , version , text encoding ,and index size
 /// but internal use only so you don't need to care
 #[derive(Debug, Clone)]
-pub struct PMXHeaderRust {
+pub struct PMXHeader {
     pub magic: String,
     pub version: f32,
     pub length: u8,
@@ -63,12 +38,7 @@ pub struct PMXHeaderRust {
     pub s_morph_index: u8,
     pub s_rigid_body_index: u8,
 }
-///represent index size of pmx data but these are converted to i32 or u32 so you don't need to care
-pub enum IndexSize {
-    Byte,
-    Short,
-    Int,
-}
+
 /// these are pmx embedded comments and names
 /// PMX仕様.txt 176~181
 #[derive(Debug, Default, Eq, PartialEq, Clone)]
@@ -78,7 +48,7 @@ pub struct PMXModelInfo {
     pub comment: String,
     pub comment_en: String,
 }
-///PMX仕様.txt 190~197
+
 ///PMX仕様.txt 190~197
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum PMXVertexWeight {
@@ -118,8 +88,25 @@ pub enum PMXVertexWeight {
     },
 }
 ///these value are must submitted to vertex shader
-/// but bone_indices bone_weights must submitted to physics engine
 /// PMX仕様.txt 184~252
+///
+/// you can pass by below codes
+/// ```glsl
+///  // per vertex
+///  layout(location = 0) in vec3 a_pos;
+///  layout(location = 1) in vec3 a_normal;
+///  layout(location = 2) in vec2 a_tex_coord;
+///  layout(location = 3) in vec4 add_uv1;
+///  layout(location = 4) in vec4 add_uv2;
+///  layout(location = 5) in vec4 add_uv3;
+///  layout(location = 6) in vec4 add_uv4;
+///  // bone and weights
+///  layout(location = 7) in int bone_kind;
+///  layout(location = 8) in vec4 bone_weights;
+///  layout(location = 9) in ivec4 bone_indices;
+///  // edge magnifier
+///  layout(location = 10) in float edge_mag;
+///  ```
 #[derive(Debug, Clone, PartialEq)]
 pub struct PMXVertex {
     pub position: Vec3,
@@ -143,46 +130,28 @@ pub struct PMXFace {
 pub struct PMXTextureList {
     pub textures: Vec<String>,
 }
-///PMX仕様.txt 286~288
-pub enum PMXDrawModeFlags {
-    BothFace = 0x01,
-    GroundShadow = 0x02,
-    CastSelfShadow = 0x04,
-    RecieveSelfShadow = 0x08,
-    DrawEdge = 0x10,
-    VertexColor = 0x20,
-    DrawPoint = 0x40,
-    DrawLine = 0x80,
-}
 
 ///PMX仕様.txt 295
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PMXSphereModeRaw {
-    None = 0x00,
-    Mul = 0x01,
-    Add = 0x02,
-    SubTexture = 0x03,
+pub enum PMXSphereModeKind {
+    Mul,
+    Add,
+    SubTexture,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PMXSphereMode {
-    Mul(i32),
-    Add(i32),
-    SubTexture,
-}
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PMXToonMode {
-    Separate(i32),
-    Common(i32),
+pub struct PMXSphereMode {
+    pub(crate) index: i32,
+    pub(crate) kind: PMXSphereModeKind,
 }
 
 ///PMX仕様.txt 297 ~ 303
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum PMXToonModeRaw {
-    Separate = 0x00,
-    //< 0:個別Toon
-    Common = 0x01, //< 1:共有Toon[0-9] toon01.bmp～toon10.bmp
+pub enum PMXToonMode {
+    Separate(i32),
+    Common(u8),
 }
+
 /// these values are must submitted to fragment or vertex shader by uniform or push_constant
 ///PMX仕様.txt 276~310
 #[derive(Debug, Clone, PartialEq)]
@@ -193,14 +162,12 @@ pub struct PMXMaterial {
     pub specular: Vec3,
     pub specular_factor: f32,
     pub ambient: Vec3,
-    pub draw_mode: u8,
+    pub draw_mode: PMXMaterialFlags,
     pub edge_color: Vec4,
     pub edge_size: f32,
     pub texture_index: i32,
-    pub sphere_mode_texture_index: i32,
-    pub sphere_mode: PMXSphereModeRaw,
-    pub toon_mode: PMXToonModeRaw,
-    pub toon_texture_index: i32,
+    pub sphere_mode: Option<PMXSphereMode>,
+    pub toon_mode: PMXToonMode,
     pub memo: String,
     pub num_face_vertices: i32,
 }
@@ -225,7 +192,7 @@ pub struct PMXBone {
     pub position: Vec3,
     pub parent: i32,
     pub deform_depth: i32,
-    pub boneflag: u16,
+    pub boneflag: PMXBoneFlags,
     pub offset: Vec3,
     pub child: i32,
     pub append_bone_index: i32,
@@ -401,7 +368,7 @@ pub enum PMXJointType {
         spring_const_move: Vec3,
         spring_const_rotation: Vec3,
     },
-    _6DOF {
+    SixDof {
         a_rigid_index: i32,
         b_rigid_index: i32,
         position: Vec3,
@@ -527,105 +494,33 @@ pub enum PMXSoftBodyAeroModel {
     FOneSided,
 }
 
-impl Display for PMXVertex {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        writeln!(
-            f,
-            "Vertex:[position:{:?} norm:{:?} uv:{:?}]",
-            self.position, self.norm, self.uv
-        );
-        if [[0.0f32; 4]; 4] != self.add_uv {
-            for add_uv in &self.add_uv {
-                write!(f, "{:?}", add_uv);
-            }
-        }
-        match self.weight_type {
-            PMXVertexWeight::BDEF1(b1) => {
-                writeln!(f, "BDEF1:[index1:{} weight1:1.0]", b1);
-            }
-            PMXVertexWeight::BDEF2 {
-                bone_index_1,
-                bone_index_2,
-                bone_weight_1,
-            } => {
-                writeln!(
-                    f,
-                    "BDEF2:[index1:{} index2:{} weight1:{} weight2:{}]",
-                    bone_index_1,
-                    bone_index_2,
-                    bone_weight_1,
-                    1.0 - bone_weight_1
-                );
-            }
-            PMXVertexWeight::BDEF4 {
-                bone_index_1,
-                bone_index_2,
-                bone_index_3,
-                bone_index_4,
-                bone_weight_1,
-                bone_weight_2,
-                bone_weight_3,
-                bone_weight_4,
-            } => {
-                writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
-            }
-            PMXVertexWeight::SDEF {
-                bone_index_1,
-                bone_index_2,
-                bone_weight_1,
-                sdef_c,
-                sdef_r0,
-                sdef_r1,
-            } => {
-                writeln!(
-                    f,
-                    "SDEF:[index1:{} index2:{} weight1:{} weight2:{}]",
-                    bone_index_1,
-                    bone_index_2,
-                    bone_weight_1,
-                    1.0 - bone_weight_1
-                );
-                writeln!(
-                    f,
-                    "SDEF Specific Params:[ C:[{:?}] R0:[{:?}] R1:[{:?}] ]",
-                    sdef_c, sdef_r0, sdef_r1
-                );
-            }
-            PMXVertexWeight::QDEF {
-                bone_index_1,
-                bone_index_2,
-                bone_index_3,
-                bone_index_4,
-                bone_weight_1,
-                bone_weight_2,
-                bone_weight_3,
-                bone_weight_4,
-            } => {
-                writeln!(f, "BDEF4:[index1:{} index2:{} index3:{} index4:{}, weight1:{} weight2:{} weight3:{} weight4:{}]", bone_index_1, bone_index_2, bone_index_3, bone_index_4, bone_weight_1, bone_weight_2, bone_weight_3, bone_weight_4);
-            }
-        }
-        writeln!(f, "edgeMagnifier:{}", self.edge_mag);
-        Ok(())
+bitflags! {
+    pub struct PMXMaterialFlags :u8 {
+        const DISABLE_CULLING =0x01;
+        const GROUND_SHADOW =0x02;
+        const DRAW_SHADOW =0x04;
+        const RECEIVE_SHADOW= 0x08;
+        const HAS_EDGE =0x10;
+        const VERTEX_COLOR = 0x20;
+        const POINT_DRAW = 0x40;
+        const LINE_DRAW =  0x80;
     }
 }
 
-impl Display for PMXFace {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        writeln!(
-            f,
-            "Triangle:[{},{},{}]",
-            self.vertices[0], self.vertices[1], self.vertices[2]
-        );
-        Ok(())
-    }
-}
-
-impl Display for PMXTextureList {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let _result = writeln!(f, "Textures:{}", self.textures.len());
-        for name in self.textures.iter() {
-            let _result = writeln!(f, "{}", name);
-        }
-        Ok(())
+bitflags! {
+    pub struct PMXBoneFlags : u16{
+        const CONNECT_TO_OTHER_BONE=0x01;
+        const ROTATABLE =0x02;
+        const TRANSLATABLE =0x04;
+        const IS_VISIBLE =0x08;
+        const ENABLED = 0x10;
+        const IK = 0x20;
+        const INHERIT_LOCAL = 0x80;
+        const INHERIT_ROTATION =0x100;
+        const INHERIT_TRANSLATION = 0x200;
+        const FIXED_AXIS = 0x400;
+        const LOCAL_COORDINATE = 0x800;
+        const PHYSICS_AFTER_DEFORM = 0x1000;
+        const EXTERNAL_PARENT_DEFORM = 0x2000;
     }
 }

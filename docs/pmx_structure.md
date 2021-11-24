@@ -106,7 +106,7 @@ We want to teach PMX structure to understand where the value passed.
  |[f32;3]|SDEF-R0|
  |[f32;3]|SDEF-R1|
  
-## QDEF (2.1) extension
+## QDEF (2.1 extension)
 DualQuaternion weight deform.
 
 |type|description|
@@ -119,3 +119,4 @@ DualQuaternion weight deform.
 |f32|weight of bone 2|
 |f32|weight of bone 3|
 |f32|weight of bone 4|
+
