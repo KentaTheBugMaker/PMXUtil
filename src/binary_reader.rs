@@ -1,4 +1,4 @@
-use crate::types::{Encode, PMXHeaderRaw, Vec2, Vec3, Vec4};
+use crate::types::{Encode, HeaderRaw, IndexKinds, Vec2, Vec3, Vec4, VertexIndexKinds};
 use std::fs::File;
 use std::io::{BufReader, Error, Read};
 use std::mem::transmute;
@@ -7,7 +7,7 @@ use std::path::Path;
 macro_rules! read_bin {
     ($F:ident,$T:ty) => {
         pub(crate) fn $F(&mut self) -> $T {
-            let mut buf = [0u8; std::mem::size_of::<$T>()];
+            let mut buf = [0_u8; std::mem::size_of::<$T>()];
             self.inner.read_exact(&mut buf).unwrap();
             unsafe { transmute(buf) }
         }
@@ -45,63 +45,25 @@ impl BinaryReader {
         }
     }
 
-    pub(crate) fn read_vertex_index(&mut self, n: u8) -> Option<i32> {
-        match n {
-            1 => Some(self.read_u8() as i32),
-            2 => Some(self.read_u16() as i32),
-            4 => Some(self.read_i32()),
-            _ => None,
+    pub(crate) fn read_vertex_index(&mut self, types: VertexIndexKinds) -> i32 {
+        match types {
+            VertexIndexKinds::U8 => self.read_u8() as i32,
+            VertexIndexKinds::U16 => self.read_u16() as i32,
+            VertexIndexKinds::I32 => self.read_i32(),
         }
     }
 
-    ///
-    ///
-    /// # Arguments
-    ///
-    /// * `n`: 1, 2 or 4 accepted
-    ///
-    /// returns: Option<i32>
-    ///
-    /// # Examples
-    ///
-    /// ```
-    ///
-    /// ```
-    pub(crate) fn read_sized(&mut self, n: u8) -> Option<i32> {
-        match n {
-            1 => {
-                Some(self.read_i8() as i32)
-                /*
-                let tmp = self.read_u8();
-                if tmp != 0xff {
-                    Some(tmp as i32)
-                } else {
-                    Some(-1)
-                }*/
-            }
-            2 => {
-                /*
-                let tmp = self.read_u16();
-                if tmp != 0xffff {
-                    Some(tmp as i32)
-                } else {
-                    Some(-1)
-                }*/
-                Some(self.read_i16() as i32)
-            }
-            4 => {
-                /*
-                let tmp = self.read_u32();
-                Some(tmp as i32)*/
-                Some(self.read_i32())
-            }
-            _ => None,
+    pub(crate) fn read_sized(&mut self, types: IndexKinds) -> i32 {
+        match types {
+            IndexKinds::I8 => self.read_i8() as i32,
+            IndexKinds::I16 => self.read_i16() as i32,
+            IndexKinds::I32 => self.read_i32(),
         }
     }
     read_bin!(read_vec4, Vec4);
     read_bin!(read_vec3, Vec3);
     read_bin!(read_vec2, Vec2);
-    read_bin!(read_raw_header, PMXHeaderRaw);
+    read_bin!(read_raw_header, HeaderRaw);
     read_bin!(read_f32, f32);
     read_bin!(read_i32, i32);
     read_bin!(read_i16, i16);

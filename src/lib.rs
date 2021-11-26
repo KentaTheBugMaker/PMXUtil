@@ -9,17 +9,17 @@ pub mod types;
 #[cfg(test)]
 mod test {
 
-    use crate::reader::PMXReader;
+    use crate::reader::ModelInfoStage;
 
-    use crate::writer::PMXWriter;
+    use crate::writer::Writer;
 
     //Perform Copy test
     #[test]
     fn copy_test() {
         let path = std::env::var("PMX_FILE").unwrap();
         let to = "./to.pmx";
-        let mut writer = PMXWriter::begin_writer(to, true);
-        let copy_from = PMXReader::open(path).unwrap();
+        let mut writer = Writer::begin_writer(to, true).unwrap();
+        let copy_from = crate::reader::ModelInfoStage::open(path).unwrap();
         let (model_info, ns) = copy_from.read();
         let (vertices, ns) = ns.read();
         let (faces, ns) = ns.read();
@@ -31,12 +31,7 @@ mod test {
         let (rigid_bodies, ns) = ns.read();
         let (joints, _ns) = ns.read();
 
-        writer.set_model_info(
-            Some(&model_info.name),
-            Some(&model_info.name_en),
-            Some(&model_info.comment),
-            Some(&model_info.comment_en),
-        );
+        writer.set_model_info(&model_info);
         writer.add_vertices(&vertices);
         writer.add_faces(&faces);
         writer.add_textures(&textures.textures);
@@ -46,9 +41,9 @@ mod test {
         writer.add_frames(&frames);
         writer.add_rigid_bodies(&rigid_bodies);
         writer.add_joints(&joints);
-        PMXWriter::write(writer);
+        Writer::write(writer);
 
-        let reader = PMXReader::open(to).unwrap();
+        let reader = ModelInfoStage::open(to).unwrap();
         let (model_info_cpy, ns) = reader.read();
         assert_eq!(model_info, model_info_cpy);
         let (vertices_cpy, ns) = ns.read();

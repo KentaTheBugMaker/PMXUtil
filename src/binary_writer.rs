@@ -6,10 +6,10 @@ use std::mem::transmute;
 use std::path::Path;
 
 use crate::types::{
-    BoneMorph, FlipMorph, GroupMorph, ImpulseMorph, MaterialMorph, MorphTypes, PMXBone,
-    PMXBoneFlags, PMXFace, PMXFrame, PMXIKLink, PMXJoint, PMXJointType, PMXMaterial, PMXMorph,
-    PMXRigid, PMXRigidCalcMethod, PMXRigidForm, PMXSoftBody, PMXSoftBodyAeroModel, PMXSoftBodyForm,
-    PMXSphereModeKind, PMXToonMode, PMXVertex, PMXVertexWeight, UVMorph, VertexMorph,
+    Bone, BoneFlags, BoneMorph, Face, FlipMorph, Frame, GroupMorph, IKLink, ImpulseMorph, Joint,
+    JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid, RigidCalcMethod, RigidForm,
+    SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind, ToonMode, UVMorph, Vertex,
+    VertexMorph, VertexWeight,
 };
 use crate::types::{Vec2, Vec3, Vec4};
 
@@ -34,11 +34,10 @@ impl BinaryWriter {
     pub fn create<P: AsRef<Path>>(path: P, is_utf16: bool) -> Result<BinaryWriter, Error> {
         //   let file = File::open(&path);
         let file = File::create(&path);
-        let file_size = std::fs::metadata(&path).unwrap().len();
 
         match file {
             Ok(file) => {
-                let inner = BufWriter::with_capacity(file_size as usize, file);
+                let inner = BufWriter::with_capacity(1024, file);
                 Ok(BinaryWriter { inner, is_utf16 })
             }
             Err(err) => Err(err),
@@ -52,7 +51,7 @@ impl BinaryWriter {
     pub(crate) fn write_text_buf(&mut self, text: &str) {
         let len = text.len();
         if self.is_utf16 {
-            let cv: Vec<u16> = text.encode_utf16().map(|ch| ch.to_le()).collect();
+            let cv: Vec<u16> = text.encode_utf16().map(u16::to_le).collect();
             self.write_i32((cv.len() * 2) as i32);
             for ch in cv {
                 self.write_u16(ch);
@@ -87,13 +86,13 @@ impl BinaryWriter {
         }
     }
 
-    pub(crate) fn write_face(&mut self, s_vertex_index: u8, face: PMXFace) {
+    pub(crate) fn write_face(&mut self, s_vertex_index: u8, face: Face) {
         self.write_vertex_index(s_vertex_index, face.vertices[0]);
         self.write_vertex_index(s_vertex_index, face.vertices[1]);
         self.write_vertex_index(s_vertex_index, face.vertices[2]);
     }
 
-    pub(crate) fn write_pmx_material(&mut self, s_texture_index: u8, material: PMXMaterial) {
+    pub(crate) fn write_pmx_material(&mut self, s_texture_index: u8, material: &Material) {
         self.write_text_buf(&material.name);
         self.write_text_buf(&material.english_name);
         self.write_vec4(material.diffuse);
@@ -107,33 +106,33 @@ impl BinaryWriter {
         if let Some(sp_mode) = material.sphere_mode {
             self.write_sized(s_texture_index, sp_mode.index);
             self.write_u8(match sp_mode.kind {
-                PMXSphereModeKind::Mul => 1,
-                PMXSphereModeKind::Add => 2,
-                PMXSphereModeKind::SubTexture => 3,
+                SphereModeKind::Mul => 1,
+                SphereModeKind::Add => 2,
+                SphereModeKind::SubTexture => 3,
             });
         } else {
             self.write_sized(s_texture_index, -1);
             self.write_u8(0);
         }
         match material.toon_mode {
-            PMXToonMode::Separate(idx) => {
+            ToonMode::Separate(idx) => {
                 self.write_u8(0);
                 self.write_sized(s_texture_index, idx);
             }
-            PMXToonMode::Common(idx) => {
+            ToonMode::Common(idx) => {
                 self.write_u8(1);
                 self.write_u8(idx as u8);
             }
         }
 
         self.write_text_buf(&material.memo);
-        self.write_i32(material.num_face_vertices)
+        self.write_i32(material.num_face_vertices);
     }
 
     pub(crate) fn write_pmx_vertex(
         &mut self,
         additional_uvs: u8,
-        vertex: PMXVertex,
+        vertex: &Vertex,
         s_bone_index: u8,
     ) {
         self.write_vec3(vertex.position);
@@ -145,18 +144,18 @@ impl BinaryWriter {
         }
 
         let weight_type = match vertex.weight_type {
-            PMXVertexWeight::BDEF1(_) => 0,
-            PMXVertexWeight::BDEF2 { .. } => 1,
-            PMXVertexWeight::BDEF4 { .. } => 2,
-            PMXVertexWeight::SDEF { .. } => 3,
-            PMXVertexWeight::QDEF { .. } => 4,
+            VertexWeight::BDEF1(_) => 0,
+            VertexWeight::BDEF2 { .. } => 1,
+            VertexWeight::BDEF4 { .. } => 2,
+            VertexWeight::SDEF { .. } => 3,
+            VertexWeight::QDEF { .. } => 4,
         };
         self.write_u8(weight_type);
         match vertex.weight_type {
-            PMXVertexWeight::BDEF1(index) => {
+            VertexWeight::BDEF1(index) => {
                 self.write_sized(s_bone_index, index);
             }
-            PMXVertexWeight::BDEF2 {
+            VertexWeight::BDEF2 {
                 bone_index_1,
                 bone_index_2,
                 bone_weight_1,
@@ -165,7 +164,17 @@ impl BinaryWriter {
                 self.write_sized(s_bone_index, bone_index_2);
                 self.write_f32(bone_weight_1);
             }
-            PMXVertexWeight::BDEF4 {
+            VertexWeight::BDEF4 {
+                bone_index_1,
+                bone_index_2,
+                bone_index_3,
+                bone_index_4,
+                bone_weight_1,
+                bone_weight_2,
+                bone_weight_3,
+                bone_weight_4,
+            }
+            | VertexWeight::QDEF {
                 bone_index_1,
                 bone_index_2,
                 bone_index_3,
@@ -184,7 +193,7 @@ impl BinaryWriter {
                 self.write_f32(bone_weight_3);
                 self.write_f32(bone_weight_4);
             }
-            PMXVertexWeight::SDEF {
+            VertexWeight::SDEF {
                 bone_index_1,
                 bone_index_2,
                 bone_weight_1,
@@ -199,31 +208,12 @@ impl BinaryWriter {
                 self.write_vec3(sdef_r0);
                 self.write_vec3(sdef_r1);
             }
-            PMXVertexWeight::QDEF {
-                bone_index_1,
-                bone_index_2,
-                bone_index_3,
-                bone_index_4,
-                bone_weight_1,
-                bone_weight_2,
-                bone_weight_3,
-                bone_weight_4,
-            } => {
-                self.write_sized(s_bone_index, bone_index_1);
-                self.write_sized(s_bone_index, bone_index_2);
-                self.write_sized(s_bone_index, bone_index_3);
-                self.write_sized(s_bone_index, bone_index_4);
-                self.write_f32(bone_weight_1);
-                self.write_f32(bone_weight_2);
-                self.write_f32(bone_weight_3);
-                self.write_f32(bone_weight_4);
-            }
         }
 
         self.write_f32(vertex.edge_mag);
     }
 
-    pub(crate) fn write_ik_link(&mut self, s_bone_index: u8, ik_link: PMXIKLink) {
+    pub(crate) fn write_ik_link(&mut self, s_bone_index: u8, ik_link: &IKLink) {
         self.write_sized(s_bone_index, ik_link.ik_bone_index);
         self.write_u8(ik_link.enable_limit);
         if ik_link.enable_limit == 1 {
@@ -232,48 +222,42 @@ impl BinaryWriter {
         }
     }
 
-    pub(crate) fn write_bone(&mut self, s_bone_index: u8, bone: PMXBone) {
+    pub(crate) fn write_bone(&mut self, s_bone_index: u8, bone: Bone) {
         self.write_text_buf(&bone.name);
         self.write_text_buf(&bone.english_name);
         self.write_vec3(bone.position);
         self.write_sized(s_bone_index, bone.parent);
         self.write_i32(bone.deform_depth);
         self.write_u16(bone.boneflag.bits());
-        if bone
-            .boneflag
-            .intersects(PMXBoneFlags::CONNECT_TO_OTHER_BONE)
-        {
+        if bone.boneflag.intersects(BoneFlags::CONNECT_TO_OTHER_BONE) {
             self.write_sized(s_bone_index, bone.child);
         } else {
             self.write_vec3(bone.offset);
         }
         if bone
             .boneflag
-            .intersects(PMXBoneFlags::INHERIT_ROTATION | PMXBoneFlags::INHERIT_TRANSLATION)
+            .intersects(BoneFlags::INHERIT_ROTATION | BoneFlags::INHERIT_TRANSLATION)
         {
             self.write_sized(s_bone_index, bone.append_bone_index);
             self.write_f32(bone.append_weight);
         }
-        if bone.boneflag.intersects(PMXBoneFlags::FIXED_AXIS) {
+        if bone.boneflag.intersects(BoneFlags::FIXED_AXIS) {
             self.write_vec3(bone.fixed_axis);
         }
-        if bone.boneflag.intersects(PMXBoneFlags::LOCAL_COORDINATE) {
+        if bone.boneflag.intersects(BoneFlags::LOCAL_COORDINATE) {
             self.write_vec3(bone.local_axis_x);
             self.write_vec3(bone.local_axis_z);
         }
-        if bone
-            .boneflag
-            .intersects(PMXBoneFlags::EXTERNAL_PARENT_DEFORM)
-        {
+        if bone.boneflag.intersects(BoneFlags::EXTERNAL_PARENT_DEFORM) {
             self.write_i32(bone.key_value);
         }
-        if bone.boneflag.intersects(PMXBoneFlags::IK) {
+        if bone.boneflag.intersects(BoneFlags::IK) {
             self.write_sized(s_bone_index, bone.ik_target_index);
             self.write_i32(bone.ik_iter_count);
             self.write_f32(bone.ik_limit);
             self.write_i32(bone.ik_links.len() as i32);
             for ik_link in bone.ik_links {
-                self.write_ik_link(s_bone_index, ik_link);
+                self.write_ik_link(s_bone_index, &ik_link);
             }
         }
         /*
@@ -319,7 +303,7 @@ impl BinaryWriter {
         s_material_index: u8,
         s_morph_index: u8,
         s_rigid_index: u8,
-        morph: PMXMorph,
+        morph: Morph,
     ) {
         self.write_text_buf(&morph.name);
         self.write_text_buf(&morph.english_name);
@@ -328,17 +312,17 @@ impl BinaryWriter {
         self.write_i32(morph.morph_data.len() as i32);
         for morph_ in morph.morph_data {
             match morph_ {
-                MorphTypes::Vertex(morph) => self.write_vertex_morph(s_vertex_index, morph),
-                MorphTypes::UV(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphTypes::UV1(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphTypes::UV2(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphTypes::UV3(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphTypes::UV4(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphTypes::Bone(morph) => self.write_bone_morph(s_bone_index, morph),
-                MorphTypes::Material(morph) => self.write_material_morph(s_material_index, morph),
-                MorphTypes::Group(morph) => self.write_group_morph(s_morph_index, morph),
-                MorphTypes::Flip(morph) => self.write_flip_morph(s_morph_index, morph),
-                MorphTypes::Impulse(morph) => self.write_impulse_morph(s_rigid_index, morph),
+                MorphKinds::Vertex(morph) => self.write_vertex_morph(s_vertex_index, morph),
+                MorphKinds::UV(morph)
+                | MorphKinds::UV1(morph)
+                | MorphKinds::UV2(morph)
+                | MorphKinds::UV3(morph)
+                | MorphKinds::UV4(morph) => self.write_uv_morph(s_vertex_index, morph),
+                MorphKinds::Bone(morph) => self.write_bone_morph(s_bone_index, morph),
+                MorphKinds::Material(morph) => self.write_material_morph(s_material_index, &morph),
+                MorphKinds::Group(morph) => self.write_group_morph(s_morph_index, morph),
+                MorphKinds::Flip(morph) => self.write_flip_morph(s_morph_index, &morph),
+                MorphKinds::Impulse(morph) => self.write_impulse_morph(s_rigid_index, &morph),
             }
         }
     }
@@ -359,7 +343,7 @@ impl BinaryWriter {
         self.write_vec4(morph.rotates);
     }
 
-    fn write_material_morph(&mut self, s_material_index: u8, morph: MaterialMorph) {
+    fn write_material_morph(&mut self, s_material_index: u8, morph: &MaterialMorph) {
         self.write_sized(s_material_index, morph.index);
         self.write_u8(morph.formula);
         self.write_vec4(morph.diffuse);
@@ -378,19 +362,19 @@ impl BinaryWriter {
         self.write_f32(morph.morph_factor);
     }
 
-    fn write_flip_morph(&mut self, s_morph_index: u8, morph: FlipMorph) {
+    fn write_flip_morph(&mut self, s_morph_index: u8, morph: &FlipMorph) {
         self.write_sized(s_morph_index, morph.index);
         self.write_f32(morph.morph_factor);
     }
 
-    fn write_impulse_morph(&mut self, s_rigid_index: u8, morph: ImpulseMorph) {
+    fn write_impulse_morph(&mut self, s_rigid_index: u8, morph: &ImpulseMorph) {
         self.write_sized(s_rigid_index, morph.rigid_index);
         self.write_u8(morph.is_local);
         self.write_vec3(morph.velocity);
         self.write_vec3(morph.torque);
     }
 
-    pub(crate) fn write_pmx_frame(&mut self, s_bone_index: u8, s_morph_index: u8, frame: PMXFrame) {
+    pub(crate) fn write_pmx_frame(&mut self, s_bone_index: u8, s_morph_index: u8, frame: Frame) {
         self.write_text_buf(&frame.name);
         self.write_text_buf(&frame.name_en);
         self.write_u8(frame.is_special);
@@ -401,23 +385,23 @@ impl BinaryWriter {
                 panic!("A invalid pmx frame detected");
             }
             if inner.target == 0 {
-                self.write_sized(s_bone_index, inner.index)
+                self.write_sized(s_bone_index, inner.index);
             } else {
-                self.write_sized(s_morph_index, inner.index)
+                self.write_sized(s_morph_index, inner.index);
             }
         }
     }
 
-    pub(crate) fn write_pmx_rigid(&mut self, s_bone_index: u8, rigid: PMXRigid) {
+    pub(crate) fn write_pmx_rigid(&mut self, s_bone_index: u8, rigid: &Rigid) {
         self.write_text_buf(&rigid.name);
         self.write_text_buf(&rigid.name_en);
         self.write_sized(s_bone_index, rigid.bone_index);
         self.write_u8(rigid.group);
         self.write_u16(rigid.un_collision_group_flag);
         let form = match rigid.form {
-            PMXRigidForm::Sphere => 0,
-            PMXRigidForm::Box => 1,
-            PMXRigidForm::Capsule => 2,
+            RigidForm::Sphere => 0,
+            RigidForm::Box => 1,
+            RigidForm::Capsule => 2,
         };
         self.write_u8(form);
 
@@ -430,27 +414,27 @@ impl BinaryWriter {
         self.write_f32(rigid.repulsion);
         self.write_f32(rigid.friction);
         let calc_method = match rigid.calc_method {
-            PMXRigidCalcMethod::Static => 0,
-            PMXRigidCalcMethod::Dynamic => 1,
-            PMXRigidCalcMethod::DynamicWithBonePosition => 2,
+            RigidCalcMethod::Static => 0,
+            RigidCalcMethod::Dynamic => 1,
+            RigidCalcMethod::DynamicWithBonePosition => 2,
         };
         self.write_u8(calc_method);
     }
 
-    pub(crate) fn write_pmx_joint(&mut self, s_rigid_index: u8, joint: PMXJoint) {
+    pub(crate) fn write_pmx_joint(&mut self, s_rigid_index: u8, joint: &Joint) {
         self.write_text_buf(&joint.name);
         self.write_text_buf(&joint.name_en);
         let kind = match joint.joint_type {
-            PMXJointType::Spring6DOF { .. } => 0,
-            PMXJointType::SixDof { .. } => 1,
-            PMXJointType::P2P { .. } => 2,
-            PMXJointType::ConeTwist { .. } => 3,
-            PMXJointType::Slider { .. } => 4,
-            PMXJointType::Hinge { .. } => 5,
+            JointType::Spring6DOF { .. } => 0,
+            JointType::SixDof { .. } => 1,
+            JointType::P2P { .. } => 2,
+            JointType::ConeTwist { .. } => 3,
+            JointType::Slider { .. } => 4,
+            JointType::Hinge { .. } => 5,
         };
         self.write_u8(kind);
         match joint.joint_type {
-            PMXJointType::Spring6DOF {
+            JointType::Spring6DOF {
                 a_rigid_index,
                 b_rigid_index,
                 position,
@@ -473,7 +457,7 @@ impl BinaryWriter {
                 self.write_vec3(spring_const_move);
                 self.write_vec3(spring_const_rotation);
             }
-            PMXJointType::SixDof {
+            JointType::SixDof {
                 a_rigid_index,
                 b_rigid_index,
                 position,
@@ -494,7 +478,7 @@ impl BinaryWriter {
                 self.write_vec3([0.0, 0.0, 0.0]);
                 self.write_vec3([0.0, 0.0, 0.0]);
             }
-            PMXJointType::P2P {
+            JointType::P2P {
                 a_rigid_index,
                 b_rigid_index,
                 position,
@@ -512,7 +496,7 @@ impl BinaryWriter {
                 self.write_vec3(dummy);
                 self.write_vec3(dummy);
             }
-            PMXJointType::ConeTwist {
+            JointType::ConeTwist {
                 a_rigid_index,
                 b_rigid_index,
                 swing_span1,
@@ -547,7 +531,7 @@ impl BinaryWriter {
                 self.write_vec3(spring_const_move);
                 self.write_vec3(spring_const_rotation);
             }
-            PMXJointType::Slider {
+            JointType::Slider {
                 a_rigid_index,
                 b_rigid_index,
                 lower_linear_limit,
@@ -586,7 +570,7 @@ impl BinaryWriter {
                 self.write_vec3(spring_const_move);
                 self.write_vec3(spring_const_rotation);
             }
-            PMXJointType::Hinge {
+            JointType::Hinge {
                 a_rigid_index,
                 b_rigid_index,
                 low,
@@ -625,13 +609,13 @@ impl BinaryWriter {
         s_material_index: u8,
         s_rigid_index: u8,
         s_vertex_index: u8,
-        soft_body: PMXSoftBody,
+        soft_body: SoftBody,
     ) {
         self.write_text_buf(&soft_body.name);
         self.write_text_buf(&soft_body.name_en);
         match soft_body.form {
-            PMXSoftBodyForm::TriMesh => self.write_u8(0),
-            PMXSoftBodyForm::Rope => self.write_u8(1),
+            SoftBodyForm::TriMesh => self.write_u8(0),
+            SoftBodyForm::Rope => self.write_u8(1),
         }
         self.write_sized(s_material_index, soft_body.material_index);
         self.write_u8(soft_body.group);
@@ -642,11 +626,11 @@ impl BinaryWriter {
         self.write_f32(soft_body.mass);
         self.write_f32(soft_body.collision_margin);
         let aero_model = match soft_body.aero_model {
-            PMXSoftBodyAeroModel::VPoint => 0,
-            PMXSoftBodyAeroModel::VTwoSide => 1,
-            PMXSoftBodyAeroModel::VOneSided => 2,
-            PMXSoftBodyAeroModel::FTwoSided => 3,
-            PMXSoftBodyAeroModel::FOneSided => 4,
+            SoftBodyAeroModel::VPoint => 0,
+            SoftBodyAeroModel::VTwoSide => 1,
+            SoftBodyAeroModel::VOneSided => 2,
+            SoftBodyAeroModel::FTwoSided => 3,
+            SoftBodyAeroModel::FOneSided => 4,
         };
         self.write_i32(aero_model);
         //config

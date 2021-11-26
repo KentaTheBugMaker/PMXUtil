@@ -1,42 +1,64 @@
 use crate::binary_writer::BinaryWriter;
 use crate::types::{
-    PMXBone, PMXFace, PMXFrame, PMXJoint, PMXJointType, PMXMaterial, PMXModelInfo, PMXMorph,
-    PMXRigid, PMXSoftBody, PMXVertex, PMXVertexWeight,
+    Bone, Face, Frame, Joint, JointType, Material, ModelInfo, Morph, Rigid, SoftBody, Vertex,
+    VertexWeight,
 };
-use std::io::Write;
+use std::io::{Error, Write};
 use std::path::Path;
-/// This is PMXWriter.
-/// This hold all PMX ingredient Vertex Face Texture Path etc.
+
+/// This is `Writer`.
+///
+/// This hold all  ingredient Vertex Face Texture Path etc.
 /// When write was called all data was wrote and drop self.
 /// ```rust
+/// use pmx_util::types::ModelInfo;
 /// let vertices = vec![];
-/// let mut writer=pmx_util::writer::PMXWriter::begin_writer("./path_to_pmx_file.pmx",true);
-/// writer.set_model_info(Some("Name "),Some("Name international"),Some("Comment"),Some("Comment international"));
+/// let mut writer=pmx_util::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
+/// writer.set_model_info(&ModelInfo{
+/// name:"PMXモデル名".to_owned(),
+/// name_en:"A PMX Model Name".to_owned(),
+/// comment:"何かコメントをここに".to_owned(),
+/// comment_en:"Exported by pmx_util".to_owned(),
+/// });
 /// writer.set_additional_uv(4);// vertices contains 4 additional uv
 /// writer.add_vertices(&vertices);
-/// writer.write()
+/// writer.write();
 /// ```
-pub struct PMXWriter {
+pub struct Writer {
     inner: BinaryWriter,
-    model_info: Option<PMXModelInfo>,
-    vertices: Vec<PMXVertex>,
+    model_info: Option<ModelInfo>,
+    vertices: Vec<Vertex>,
     additional_uvs: Option<u8>,
-    faces: Vec<PMXFace>,
+    faces: Vec<Face>,
     textures: Vec<String>,
-    materials: Vec<PMXMaterial>,
-    bones: Vec<PMXBone>,
-    morphs: Vec<PMXMorph>,
-    frames: Vec<PMXFrame>,
-    rigid_bodies: Vec<PMXRigid>,
-    joints: Vec<PMXJoint>,
-    soft_bodies: Vec<PMXSoftBody>,
+    materials: Vec<Material>,
+    bones: Vec<Bone>,
+    morphs: Vec<Morph>,
+    frames: Vec<Frame>,
+    rigid_bodies: Vec<Rigid>,
+    joints: Vec<Joint>,
+    soft_bodies: Vec<SoftBody>,
 }
-impl PMXWriter {
-    /// Set model name and start builder
-    /// But actually data does not be wrote
-    pub fn begin_writer<P: AsRef<Path>>(path: P, is_utf16: bool) -> Self {
-        let inner = BinaryWriter::create(path, is_utf16).unwrap();
-        Self {
+impl Writer {
+    ///
+    ///
+    /// # Arguments
+    ///
+    /// * `path`:
+    /// * `is_utf16`:
+    ///
+    /// returns: Result<Writer, Error>
+    ///
+    /// # Errors
+    ///  if failed to create file with given path.
+    /// # Examples
+    ///
+    /// ```
+    ///
+    /// ```
+    pub fn begin_writer<P: AsRef<Path>>(path: P, is_utf16: bool) -> Result<Writer, Error> {
+        let inner = BinaryWriter::create(path, is_utf16)?;
+        Ok(Self {
             inner,
             model_info: None,
             vertices: vec![],
@@ -50,27 +72,11 @@ impl PMXWriter {
             frames: vec![],
             joints: vec![],
             soft_bodies: vec![],
-        }
+        })
     }
 
-    pub fn set_model_info(
-        &mut self,
-        model_name: Option<&str>,
-        model_name_en: Option<&str>,
-        comment: Option<&str>,
-        comment_en: Option<&str>,
-    ) {
-        let name = model_name.unwrap_or("").to_string();
-        let name_en = model_name_en.unwrap_or("").to_string();
-        let comment = comment.unwrap_or("").to_string();
-        let comment_en = comment_en.unwrap_or("").to_string();
-        let model_info = PMXModelInfo {
-            name,
-            name_en,
-            comment,
-            comment_en,
-        };
-        self.model_info = Some(model_info);
+    pub fn set_model_info(&mut self, model_info: &ModelInfo) {
+        self.model_info.replace(model_info.clone());
     }
 
     ///
@@ -79,8 +85,8 @@ impl PMXWriter {
     ///
     /// * `count`: 0..4
     ///
-    /// # Err
-    ///
+    /// # Errors
+    /// if additional uv count exceed 4.
     ///
     pub fn set_additional_uv(&mut self, count: u8) -> Result<(), &str> {
         if count > 4 {
@@ -91,11 +97,11 @@ impl PMXWriter {
         }
     }
 
-    pub fn add_vertices(&mut self, vertices: &[PMXVertex]) {
+    pub fn add_vertices(&mut self, vertices: &[Vertex]) {
         self.vertices.extend_from_slice(vertices);
     }
 
-    pub fn add_faces(&mut self, faces: &[PMXFace]) {
+    pub fn add_faces(&mut self, faces: &[Face]) {
         self.faces.extend_from_slice(faces);
     }
 
@@ -103,61 +109,59 @@ impl PMXWriter {
         self.textures.extend_from_slice(textures);
     }
 
-    pub fn add_materials(&mut self, materials: &[PMXMaterial]) {
+    pub fn add_materials(&mut self, materials: &[Material]) {
         self.materials.extend_from_slice(materials);
     }
 
-    pub fn add_morphs(&mut self, morphs: &[PMXMorph]) {
-        self.morphs.extend_from_slice(morphs)
+    pub fn add_morphs(&mut self, morphs: &[Morph]) {
+        self.morphs.extend_from_slice(morphs);
     }
 
-    pub fn add_bones(&mut self, bones: &[PMXBone]) {
-        self.bones.extend_from_slice(bones)
+    pub fn add_bones(&mut self, bones: &[Bone]) {
+        self.bones.extend_from_slice(bones);
     }
 
-    pub fn add_frames(&mut self, frames: &[PMXFrame]) {
-        self.frames.extend_from_slice(frames)
+    pub fn add_frames(&mut self, frames: &[Frame]) {
+        self.frames.extend_from_slice(frames);
     }
 
-    pub fn add_rigid_bodies(&mut self, rigid_bodies: &[PMXRigid]) {
-        self.rigid_bodies.extend_from_slice(rigid_bodies)
+    pub fn add_rigid_bodies(&mut self, rigid_bodies: &[Rigid]) {
+        self.rigid_bodies.extend_from_slice(rigid_bodies);
     }
 
-    pub fn add_joints(&mut self, joints: &[PMXJoint]) {
-        self.joints.extend_from_slice(joints)
+    pub fn add_joints(&mut self, joints: &[Joint]) {
+        self.joints.extend_from_slice(joints);
     }
 
-    pub fn add_soft_bodies(&mut self, soft_bodies: &[PMXSoftBody]) {
-        self.soft_bodies.extend_from_slice(soft_bodies)
+    pub fn add_soft_bodies(&mut self, soft_bodies: &[SoftBody]) {
+        self.soft_bodies.extend_from_slice(soft_bodies);
     }
 
-    /// Actually write data because index size optimization
-    /// and drop all
-    pub fn write(self) {
+    pub fn write(self) -> Result<(), WritePMXErrors> {
         // determine we need to use 2.1 extension
 
         let vertex = self
             .vertices
             .iter()
-            .find(|vertex| matches!(vertex.weight_type, PMXVertexWeight::QDEF { .. }));
+            .find(|vertex| matches!(vertex.weight_type, VertexWeight::QDEF { .. }));
         let morph = self.morphs.iter().find(|morph| morph.morph_type > 8);
         let joint = self.joints.iter().find(|joint| {
             matches!(
                 joint.joint_type,
-                PMXJointType::Slider { .. }
-                    | PMXJointType::SixDof { .. }
-                    | PMXJointType::ConeTwist { .. }
-                    | PMXJointType::Hinge { .. }
-                    | PMXJointType::P2P { .. }
+                JointType::Slider { .. }
+                    | JointType::SixDof { .. }
+                    | JointType::ConeTwist { .. }
+                    | JointType::Hinge { .. }
+                    | JointType::P2P { .. }
             )
         });
         let ext_2_1 =
             vertex.is_some() | morph.is_some() | joint.is_some() | !self.soft_bodies.is_empty();
 
         // generate header
-        let magic = b"PMX ";
+        let magic = [0x50_u8, 0x4d, 0x58, 0x20];
         let version = if ext_2_1 { 2.1 } else { 2.0 };
-        let length = 8u8;
+        let length = 8_u8;
         let s_vertex_index = require_bytes_vertex(self.vertices.len());
         let s_texture_index = require_bytes_signed(self.textures.len());
         let s_material_index = require_bytes_signed(self.materials.len());
@@ -176,14 +180,18 @@ impl PMXWriter {
         ];
         //write header
         let mut writer = self.inner;
-        writer.write_vec(magic);
+        writer.write_vec(&magic);
         writer.write_f32(version);
         writer.write_u8(length);
         writer.write_vec(&parameters);
         //wrote header
 
         //write model info
-        let model_info = self.model_info.unwrap();
+        let model_info = if let Some(mi) = self.model_info {
+            mi
+        } else {
+            return Err(WritePMXErrors::NoModelInfo);
+        };
         writer.write_text_buf(&model_info.name);
         writer.write_text_buf(&model_info.name_en);
         writer.write_text_buf(&model_info.comment);
@@ -192,7 +200,7 @@ impl PMXWriter {
 
         writer.write_i32(self.vertices.len() as i32);
         for vertex in self.vertices {
-            writer.write_pmx_vertex(self.additional_uvs.unwrap_or(0), vertex, s_bone_index);
+            writer.write_pmx_vertex(self.additional_uvs.unwrap_or(0), &vertex, s_bone_index);
         }
 
         writer.write_i32(3 * self.faces.len() as i32);
@@ -207,7 +215,7 @@ impl PMXWriter {
 
         writer.write_i32(self.materials.len() as i32);
         for material in self.materials {
-            writer.write_pmx_material(s_texture_index, material)
+            writer.write_pmx_material(s_texture_index, &material)
         }
 
         writer.write_i32(self.bones.len() as i32);
@@ -234,14 +242,14 @@ impl PMXWriter {
 
         writer.write_i32(self.rigid_bodies.len() as i32);
         for rigid in self.rigid_bodies {
-            writer.write_pmx_rigid(s_bone_index, rigid)
+            writer.write_pmx_rigid(s_bone_index, &rigid)
         }
 
         writer.write_i32(self.joints.len() as i32);
         for joint in self.joints {
-            writer.write_pmx_joint(s_rigid_body_index, joint)
+            writer.write_pmx_joint(s_rigid_body_index, &joint)
         }
-        //PMX 2.1 extended section.
+        // 2.1 extended section.
         if ext_2_1 {
             writer.write_i32(self.soft_bodies.len() as i32);
             for soft_body in self.soft_bodies {
@@ -253,7 +261,7 @@ impl PMXWriter {
                 );
             }
         }
-        writer.inner.flush().unwrap();
+        writer.inner.flush().map_err(WritePMXErrors::IoError)
     }
 }
 
@@ -275,4 +283,9 @@ fn require_bytes_signed(len: usize) -> u8 {
     } else {
         4 //32 bit
     }
+}
+
+pub enum WritePMXErrors {
+    NoModelInfo,
+    IoError(std::io::Error),
 }
