@@ -1,3 +1,5 @@
+//! PMX writing module.
+
 use crate::binary_writer::BinaryWriter;
 use crate::types::{
     Bone, Face, Frame, Joint, JointType, Material, ModelInfo, Morph, Rigid, SoftBody, Vertex,
@@ -6,10 +8,11 @@ use crate::types::{
 use std::io::{Error, Write};
 use std::path::Path;
 
-/// This is `Writer`.
+/// PMX writer
 ///
-/// This hold all  ingredient Vertex Face Texture Path etc.
-/// When write was called all data was wrote and drop self.
+/// This hold all  ingredients e.g. Vertex, Face, Texture Path,
+///
+/// When write was called all data was wrote and dropped.
 /// ```rust
 /// use pmx_util::types::ModelInfo;
 /// let vertices = vec![];
@@ -44,8 +47,9 @@ impl Writer {
     ///
     /// # Arguments
     ///
-    /// * `path`:
-    /// * `is_utf16`:
+    /// * `path`: where to write
+    /// * `encode_to_utf16`: if true text will encoded in UTF-16 Little Endian
+    ///     if you don't have any special reason turn on it to keep MMD compatibility.
     ///
     /// returns: Result<Writer, Error>
     ///
@@ -54,10 +58,12 @@ impl Writer {
     /// # Examples
     ///
     /// ```
-    ///
+    /// use pmx_util::types::ModelInfo;
+    /// let vertices = vec![];
+    /// let mut writer=pmx_util::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
     /// ```
-    pub fn begin_writer<P: AsRef<Path>>(path: P, is_utf16: bool) -> Result<Writer, Error> {
-        let inner = BinaryWriter::create(path, is_utf16)?;
+    pub fn begin_writer<P: AsRef<Path>>(path: P, encode_to_utf_16: bool) -> Result<Writer, Error> {
+        let inner = BinaryWriter::create(path, encode_to_utf_16)?;
         Ok(Self {
             inner,
             model_info: None,

@@ -1,42 +1,16 @@
 ### PMXUtil
-## A PMX loader and Writer written in Rust
+## A PMX reader and writer written in Rust
 ### What can this crate do
-  1. Parse PMX 2.0/2.1 header
-  2. Parse PMX 2.0/2.1 Model Info
-      - Name
-      - English Name
-      - Comment
-      - English Comment
-  3. Parse vertices Information
-  4. Parse Material Information
-  5. Parse Bone Information
-  6. Parse Morph Information
-  7. Parse Frame Information
-  8. Parse Rigid Information
-  9. parse Joint Information
-  10. Parse SoftBody Information   
-  11. Write PMX 2.0 header
-  12. Write Model info 
-  13. Write vertices
-  14. Write Materials
-  15. Write Bone
-  16. Write Morph
-  17. Write Frame
-  18. Write Rigid
-  19. Write Joint
-  20. Write SoftBody (if 2.1 extension detected)
+all of pmx related jobs.
 ### WIP
-  1. Implement Display trait
+  * improving docs
 
 ## How to Use
-### 1. Import
+
+###  Create reader instance and read  
+
 ```rust
-extern crate pmx_util;
-use PMXUtil::pmx_loader::PMXLoader;
-```
-### 2. Create loader instance and read  
-```rust
-let mut loader= PMXLoader::open("/path/to/pmxfile");
+let mut loader= ModelInfoStage::open("/path/to/pmxfile").unwrap();
 let header = loader.get_header();
 println!("{:#?}", header);
 let (model_info, ns) = loader.read_pmx_model_info();
@@ -50,19 +24,29 @@ println!("{}", textures);
 let (materials, ns) = ns.read_pmx_materials();
 println!("{:#?}", materials);
 ```
-### 3 Create Writer instance and write
-    you can choose text encoding UTF-8 or UTF-16LE but remenber MMD only support UTF-16LE.
+
+### Create Writer instance and write
+    you can choose text encoding UTF-8 or UTF-16LE but MMD only support UTF-16LE.
 
 ```rust
-        let mut writer =PMXWriter::begin_writer("/path/to/pmxfile");
-        writer.set_model_info(Some(&model_info.name),Some(&model_info.name_en),Some(&model_info.comment),Some(&model_info.comment_en));
+
+        use pmx_util::writer::Writer;
+        let mut writer =Writer::begin_writer("/path/to/pmxfile").unwrap();
+        writer.set_model_info(
+            &ModelInfo{
+                name:"A Model Name in your local language".to_owned()
+                name_en:"A Model Name in english".to_owned()
+                comment:"Comment in you local language".to_owned()
+                comment_en:"Comment in english".to_owned()
+            }
+        );
         writer.add_vertices(&vertices);
         writer.add_faces(&faces);
         writer.add_textures(&textures);
         writer.add_materials(&materials);
         writer.add_bones(&bones);
         writer.add_morphs(&morphs);
-        PMXWriter::write(writer);
+        Writer::write(writer);
 ```
 ## Note 
 

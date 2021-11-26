@@ -1,3 +1,7 @@
+//! pmx_util - PMX reading and writing utility
+//!
+//!
+//!
 pub(crate) mod binary_writer;
 pub mod writer;
 
