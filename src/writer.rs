@@ -58,8 +58,6 @@ impl Writer {
     /// # Examples
     ///
     /// ```
-    /// use pmx_util::types::ModelInfo;
-    /// let vertices = vec![];
     /// let mut writer=pmx_util::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
     /// ```
     pub fn begin_writer<P: AsRef<Path>>(path: P, encode_to_utf_16: bool) -> Result<Writer, Error> {
@@ -143,9 +141,15 @@ impl Writer {
         self.soft_bodies.extend_from_slice(soft_bodies);
     }
 
+    /// write all date and drop it
+    ///
+    /// # Panics
+    ///
+    /// # Errors
+    /// * `WritePMXErrors::TooBig` if any buffer exceeds `i32::MAX`
+    /// * `WritePMXErrors::NoModelInfo` if model info is not set.
+    /// * `WritePMXErrors::IoError` if failed to write pmx.
     pub fn write(self) -> Result<(), WritePMXErrors> {
-        // determine we need to use 2.1 extension
-
         let vertex = self
             .vertices
             .iter()
@@ -163,8 +167,6 @@ impl Writer {
         });
         let ext_2_1 =
             vertex.is_some() | morph.is_some() | joint.is_some() | !self.soft_bodies.is_empty();
-
-        // generate header
         let magic = [0x50_u8, 0x4d, 0x58, 0x20];
         let version = if ext_2_1 { 2.1 } else { 2.0 };
         let length = 8_u8;
@@ -184,15 +186,11 @@ impl Writer {
             s_morph_index,
             s_rigid_body_index,
         ];
-        //write header
         let mut writer = self.inner;
         writer.write_vec(&magic);
         writer.write_f32(version);
         writer.write_u8(length);
         writer.write_vec(&parameters);
-        //wrote header
-
-        //write model info
         let model_info = if let Some(mi) = self.model_info {
             mi
         } else {
@@ -204,32 +202,32 @@ impl Writer {
         writer.write_text_buf(&model_info.comment_en);
         //wrote model info
 
-        writer.write_i32(self.vertices.len() as i32);
+        writer.write_i32(try_cast_length(self.vertices.len()).into_result()?);
         for vertex in self.vertices {
             writer.write_pmx_vertex(self.additional_uvs.unwrap_or(0), &vertex, s_bone_index);
         }
 
-        writer.write_i32(3 * self.faces.len() as i32);
+        writer.write_i32(try_cast_length(3 * self.faces.len()).into_result()?);
         for face in self.faces {
-            writer.write_face(s_vertex_index, face)
+            writer.write_face(s_vertex_index, face);
         }
 
-        writer.write_i32(self.textures.len() as i32);
+        writer.write_i32(try_cast_length(self.textures.len()).into_result()?);
         for name in self.textures {
             writer.write_text_buf(&name);
         }
 
-        writer.write_i32(self.materials.len() as i32);
+        writer.write_i32(try_cast_length(self.materials.len()).into_result()?);
         for material in self.materials {
-            writer.write_pmx_material(s_texture_index, &material)
+            writer.write_pmx_material(s_texture_index, &material);
         }
 
-        writer.write_i32(self.bones.len() as i32);
+        writer.write_i32(try_cast_length(self.bones.len()).into_result()?);
         for bone in self.bones {
             writer.write_bone(s_bone_index, bone);
         }
 
-        writer.write_i32(self.morphs.len() as i32);
+        writer.write_i32(try_cast_length(self.morphs.len()).into_result()?);
         for morph in self.morphs {
             writer.write_pmx_morph(
                 s_vertex_index,
@@ -241,23 +239,23 @@ impl Writer {
             );
         }
 
-        writer.write_i32(self.frames.len() as i32);
+        writer.write_i32(try_cast_length(self.frames.len()).into_result()?);
         for frame in self.frames {
             writer.write_pmx_frame(s_bone_index, s_morph_index, frame);
         }
 
-        writer.write_i32(self.rigid_bodies.len() as i32);
+        writer.write_i32(try_cast_length(self.rigid_bodies.len()).into_result()?);
         for rigid in self.rigid_bodies {
-            writer.write_pmx_rigid(s_bone_index, &rigid)
+            writer.write_pmx_rigid(s_bone_index, &rigid);
         }
 
-        writer.write_i32(self.joints.len() as i32);
+        writer.write_i32(try_cast_length(self.joints.len()).into_result()?);
         for joint in self.joints {
-            writer.write_pmx_joint(s_rigid_body_index, &joint)
+            writer.write_pmx_joint(s_rigid_body_index, &joint);
         }
         // 2.1 extended section.
         if ext_2_1 {
-            writer.write_i32(self.soft_bodies.len() as i32);
+            writer.write_i32(try_cast_length(self.soft_bodies.len()).into_result()?);
             for soft_body in self.soft_bodies {
                 writer.write_pmx_soft_body(
                     s_material_index,
@@ -294,4 +292,24 @@ fn require_bytes_signed(len: usize) -> u8 {
 pub enum WritePMXErrors {
     NoModelInfo,
     IoError(std::io::Error),
+    TooBig,
+}
+trait IntoResult<K, E> {
+    fn into_result(self) -> Result<K, E>;
+}
+impl IntoResult<i32, WritePMXErrors> for Option<i32> {
+    fn into_result(self) -> Result<i32, WritePMXErrors> {
+        match self {
+            None => Result::Err(WritePMXErrors::TooBig),
+            Some(x) => Result::Ok(x),
+        }
+    }
+}
+#[allow(clippy::cast_possible_truncation, clippy::cast_possible_wrap)]
+fn try_cast_length(x: usize) -> Option<i32> {
+    if x > i32::MAX as usize {
+        None
+    } else {
+        Some(x as i32)
+    }
 }

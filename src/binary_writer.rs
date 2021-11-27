@@ -6,10 +6,10 @@ use std::mem::transmute;
 use std::path::Path;
 
 use crate::types::{
-    Bone, BoneFlags, BoneMorph, Face, FlipMorph, Frame, GroupMorph, IKLink, ImpulseMorph, Joint,
-    JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid, RigidCalcMethod, RigidForm,
-    SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind, ToonMode, UVMorph, Vertex,
-    VertexMorph, VertexWeight,
+    Bone, BoneMorph, ConnectionDisplayMode, Face, FlipMorph, Frame, GroupMorph, IKLink,
+    ImpulseMorph, Joint, JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid,
+    RigidCalcMethod, RigidForm, SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind, Target,
+    ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use crate::types::{Vec2, Vec3, Vec4};
 
@@ -215,10 +215,12 @@ impl BinaryWriter {
 
     pub(crate) fn write_ik_link(&mut self, s_bone_index: u8, ik_link: &IKLink) {
         self.write_sized(s_bone_index, ik_link.ik_bone_index);
-        self.write_u8(ik_link.enable_limit);
-        if ik_link.enable_limit == 1 {
-            self.write_vec3(ik_link.limit_min);
-            self.write_vec3(ik_link.limit_max);
+        if let Some(limits) = ik_link.angle_limit {
+            self.write_u8(1);
+            self.write_vec3(limits.0);
+            self.write_vec3(limits.1);
+        } else {
+            self.write_u8(0);
         }
     }
 
@@ -228,72 +230,38 @@ impl BinaryWriter {
         self.write_vec3(bone.position);
         self.write_sized(s_bone_index, bone.parent);
         self.write_i32(bone.deform_depth);
-        self.write_u16(bone.boneflag.bits());
-        if bone.boneflag.intersects(BoneFlags::CONNECT_TO_OTHER_BONE) {
-            self.write_sized(s_bone_index, bone.child);
-        } else {
-            self.write_vec3(bone.offset);
+        self.write_u16(bone.bone_flags.bits());
+        match bone.connection_display_mode {
+            ConnectionDisplayMode::OtherBone(x) => {
+                self.write_sized(s_bone_index, x);
+            }
+            ConnectionDisplayMode::Offset(x) => {
+                self.write_vec3(x);
+            }
         }
-        if bone
-            .boneflag
-            .intersects(BoneFlags::INHERIT_ROTATION | BoneFlags::INHERIT_TRANSLATION)
-        {
-            self.write_sized(s_bone_index, bone.append_bone_index);
-            self.write_f32(bone.append_weight);
+        if let Some(append) = bone.appends {
+            self.write_sized(s_bone_index, append.0);
+            self.write_f32(append.1);
         }
-        if bone.boneflag.intersects(BoneFlags::FIXED_AXIS) {
-            self.write_vec3(bone.fixed_axis);
+        if let Some(axis) = bone.fixed_axis {
+            self.write_vec3(axis);
         }
-        if bone.boneflag.intersects(BoneFlags::LOCAL_COORDINATE) {
-            self.write_vec3(bone.local_axis_x);
-            self.write_vec3(bone.local_axis_z);
+        if let Some((local_axis_x, local_axis_z)) = bone.local_axis {
+            self.write_vec3(local_axis_x);
+            self.write_vec3(local_axis_z);
         }
-        if bone.boneflag.intersects(BoneFlags::EXTERNAL_PARENT_DEFORM) {
-            self.write_i32(bone.key_value);
+        if let Some(key) = bone.external_parent {
+            self.write_i32(key);
         }
-        if bone.boneflag.intersects(BoneFlags::IK) {
-            self.write_sized(s_bone_index, bone.ik_target_index);
-            self.write_i32(bone.ik_iter_count);
-            self.write_f32(bone.ik_limit);
-            self.write_i32(bone.ik_links.len() as i32);
-            for ik_link in bone.ik_links {
+        if let Some(ik_infos) = bone.ik_info {
+            self.write_sized(s_bone_index, ik_infos.ik_target_bone_index);
+            self.write_i32(ik_infos.ik_iter_count);
+            self.write_f32(ik_infos.ik_limit_angle);
+            self.write_i32(ik_infos.ik_links.len() as i32);
+            for ik_link in ik_infos.ik_links {
                 self.write_ik_link(s_bone_index, &ik_link);
             }
         }
-        /*
-        if (bone.boneflag & BONE_FLAG_TARGET_SHOW_MODE_MASK) == BONE_FLAG_TARGET_SHOW_MODE_MASK {
-            self.write_sized(s_bone_index, bone.child);
-        } else {
-            self.write_vec3(bone.offset);
-        }*/
-        /*
-        if bone.boneflag & (BONE_FLAG_APPEND_ROTATE_MASK | BONE_FLAG_APPEND_TRANSLATE_MASK) > 0 {
-            self.write_sized(s_bone_index, bone.append_bone_index);
-            self.write_f32(bone.append_weight);
-        }
-        */
-        /*
-        if (bone.boneflag & BONE_FLAG_FIXED_AXIS_MASK) == BONE_FLAG_FIXED_AXIS_MASK {
-            self.write_vec3(bone.fixed_axis);
-        }
-        if (bone.boneflag & BONE_FLAG_LOCAL_AXIS_MASK) == BONE_FLAG_LOCAL_AXIS_MASK {
-            self.write_vec3(bone.local_axis_x);
-            self.write_vec3(bone.local_axis_z);
-        }*/
-        /*
-        if (bone.boneflag & BONE_FLAG_DEFORM_OUTER_PARENT_MASK) > 0 {
-            self.write_i32(bone.key_value);
-        }*/
-        /*
-        if (bone.boneflag & BONE_FLAG_IK_MASK) == BONE_FLAG_IK_MASK {
-            self.write_sized(s_bone_index, bone.ik_target_index);
-            self.write_i32(bone.ik_iter_count);
-            self.write_f32(bone.ik_limit);
-            self.write_i32(bone.ik_links.len() as i32);
-            for ik_link in bone.ik_links {
-                self.write_ik_link(s_bone_index, ik_link);
-            }
-        }*/
     }
 
     pub(crate) fn write_pmx_morph(
@@ -380,14 +348,15 @@ impl BinaryWriter {
         self.write_u8(frame.is_special);
         self.write_i32(frame.inners.len() as i32);
         for inner in frame.inners {
-            self.write_u8(inner.target);
-            if inner.target > 1 {
-                panic!("A invalid pmx frame detected");
-            }
-            if inner.target == 0 {
-                self.write_sized(s_bone_index, inner.index);
-            } else {
-                self.write_sized(s_morph_index, inner.index);
+            match inner.target {
+                Target::Bone => {
+                    self.write_u8(0);
+                    self.write_sized(s_bone_index, inner.index);
+                }
+                Target::Morph => {
+                    self.write_u8(1);
+                    self.write_sized(s_morph_index, inner.index);
+                }
             }
         }
     }

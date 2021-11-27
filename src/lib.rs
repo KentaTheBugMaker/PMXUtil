@@ -1,4 +1,4 @@
-//! pmx_util - PMX reading and writing utility
+//! `pmx_util` - PMX reading and writing utility
 //!
 //!
 //!
