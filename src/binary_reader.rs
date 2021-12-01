@@ -47,8 +47,8 @@ impl BinaryReader {
 
     pub(crate) fn read_vertex_index(&mut self, types: VertexIndexKinds) -> i32 {
         match types {
-            VertexIndexKinds::U8 => self.read_u8() as i32,
-            VertexIndexKinds::U16 => self.read_u16() as i32,
+            VertexIndexKinds::U8 => i32::from(self.read_u8()),
+            VertexIndexKinds::U16 => i32::from(self.read_u16()),
             VertexIndexKinds::I32 => self.read_i32(),
         }
     }

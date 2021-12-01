@@ -78,56 +78,56 @@ pub enum VertexWeight {
     ///
     /// We can't find official `SDEF` code but maybe this code usable.
     /// ```hlsl
-    /// //	影響度算出
+    /// //    影響度算出
     /// void CalcSdefWeight( out float _rWeight0,
     ///                      out float _rWeight1,
     ///                       in float3 _rSdefR0,
     ///                       in float3 _rSdefR1 )
     /// {
-    /// 	float	l0	= length( _rSdefR0 );
-    /// 	float	l1	= length( _rSdefR1 );
-    /// 	if( abs( l0 - l1 ) < 0.0001f )
-    /// 	{
-    /// 		_rWeight1	= 0.5f;
-    /// 	}
-    /// 	else
-    /// 	{
-    /// 		_rWeight1	= saturate( l0 / ( l0 + l1 ) );
-    /// 	}
-    /// 	_rWeight0	= 1.0f - _rWeight1;
+    ///     float    l0    = length( _rSdefR0 );
+    ///     float    l1    = length( _rSdefR1 );
+    ///     if( abs( l0 - l1 ) < 0.0001f )
+    ///     {
+    ///         _rWeight1    = 0.5f;
+    ///     }
+    ///     else
+    ///     {
+    ///         _rWeight1    = saturate( l0 / ( l0 + l1 ) );
+    ///     }
+    ///     _rWeight0    = 1.0f - _rWeight1;
     /// }
     ///
-    /// //	SDEF コード
+    /// //    SDEF コード
     /// {
-    /// 	int		b0	= _stIn.BIndex[0],
-    /// 			b1	= _stIn.BIndex[1];
-    /// 	float	w0	= _stIn.BWeight[0],
-    /// 			w1	= _stIn.BWeight[1];
-    /// 	//	先に影響度を算出する
-    /// 	float	w2, w3;
-    /// 	CalcSdefWeight( w2, w3, _stIn.SdefR0 + _stIn.SdefC, _stIn.SdefR1 + _stIn.SdefC );
-    /// 	//	C点を算出する
-    /// 	float4	r0	= float4( _stIn.SdefR0 + _stIn.SdefC, 1 );
-    /// 	float4	r1	= float4( _stIn.SdefR1 + _stIn.SdefC, 1 );
-    /// 	matrix	m0	= m_mPMXBoneMatrix[b0];
-    /// 	matrix	m1	= m_mPMXBoneMatrix[b1];
-    /// 	matrix	mrc	= m0 * w0 + m1 * w1;
-    /// 	float3	prc	= mul( float4( _stIn.SdefC, 1 ), mrc ).xyz;
-    /// 	//	r0, r1による差分値を算出して加算
-    /// 	{
-    /// 		matrix	m2	= m0 * w0;
-    /// 		matrix	m3	= m1 * w1;
-    /// 		matrix	m	= m2 + m3;
-    /// 		float3	v0	= mul( r0,m2 + m * w1 ).xyz - mul( r0, m ).xyz;
-    /// 		float3	v1	= mul( r1,m * w0 + m3 ).xyz - mul( r1, m ).xyz;
-    /// 		prc			+= v0 * w2 + v1 * w3;
-    /// 	}
-    /// 	//	回転して加算
-    /// 	float4	q0	= m_vPMXBoneQuat[b0] * w0;
-    /// 	float4	q1	= m_vPMXBoneQuat[b1] * w1;
-    /// 	matrix	m	= QuaternionToMatrix( slerp( q0, q1, w3 ) );
-    /// 	_vPos		= prc + mul( float4( _vPos - _stIn.SdefC, 1 ), m ).xyz;
-    /// 	_vNorm		= mul( float4( _vNorm.xyz, 1 ), m ).xyz;
+    ///     int     b0    = _stIn.BIndex[0],
+    ///             b1    = _stIn.BIndex[1];
+    ///     float   w0    = _stIn.BWeight[0],
+    ///             w1    = _stIn.BWeight[1];
+    ///     //    先に影響度を算出する
+    ///     float   w2, w3;
+    ///     CalcSdefWeight( w2, w3, _stIn.SdefR0 + _stIn.SdefC, _stIn.SdefR1 + _stIn.SdefC );
+    ///     //    C点を算出する
+    ///     float4   r0   = float4( _stIn.SdefR0 + _stIn.SdefC, 1 );
+    ///     float4   r1   = float4( _stIn.SdefR1 + _stIn.SdefC, 1 );
+    ///     matrix   m0   = m_mPMXBoneMatrix[b0];
+    ///     matrix   m1   = m_mPMXBoneMatrix[b1];
+    ///     matrix   mrc  = m0 * w0 + m1 * w1;
+    ///     float3   prc  = mul( float4( _stIn.SdefC, 1 ), mrc ).xyz;
+    ///     //    r0, r1による差分値を算出して加算
+    ///     {
+    ///         matrix    m2    = m0 * w0;
+    ///         matrix    m3    = m1 * w1;
+    ///         matrix    m     = m2 + m3;
+    ///         float3    v0    = mul( r0,m2 + m * w1 ).xyz - mul( r0, m ).xyz;
+    ///         float3    v1    = mul( r1,m * w0 + m3 ).xyz - mul( r1, m ).xyz;
+    ///         prc            += v0 * w2 + v1 * w3;
+    ///     }
+    ///     //    回転して加算
+    ///     float4    q0  = m_vPMXBoneQuat[b0] * w0;
+    ///     float4    q1  = m_vPMXBoneQuat[b1] * w1;
+    ///     matrix    m   = QuaternionToMatrix( slerp( q0, q1, w3 ) );
+    ///     _vPos         = prc + mul( float4( _vPos - _stIn.SdefC, 1 ), m ).xyz;
+    ///     _vNorm        = mul( float4( _vNorm.xyz, 1 ), m ).xyz;
     /// }
     /// ```
     SDEF {
