@@ -17,19 +17,19 @@
 //! ```rust
 //! // i want to get pmx path from env vars.
 //! let path = std::env::var("PMX_FILE").unwrap();
-//! let model_info_loader=pmx_util::reader::ModelInfoStage::open(path);
+//! let model_info_loader=PMXUtil::reader::ModelInfoStage::open(path);
 //! let (model_info,vertices_loader)=model_info_loader.unwrap().read();
 //! ```
 //!
 
 use crate::binary_reader::BinaryReader;
 use crate::types::{
-    Bone, BoneFlags, BoneIKInfo, BoneMorph, ConnectionDisplayMode, Encode, Face, Frame, FrameInner,
-    GroupMorph, Header, HeaderConversionError, HeaderRaw, IKLink, Joint, JointParameterRaw,
-    JointType, Material, MaterialFlags, MaterialMorph, ModelInfo, Morph, MorphKinds, Rigid,
-    RigidCalcMethod, RigidForm, SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm,
-    SphereMode, SphereModeKind, Target, TextureList, ToonMode, UVMorph, Vertex, VertexMorph,
-    VertexWeight,
+    Bone, BoneFlags, BoneIKInfo, BoneInherits, BoneMorph, ConnectionDisplayMode, Encode, Face,
+    Frame, FrameInner, GroupMorph, Header, HeaderConversionError, HeaderRaw, IKLink, Joint,
+    JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph, ModelInfo, Morph,
+    MorphKinds, Rigid, RigidCalcMethod, RigidForm, RotateAndTranslateInherits, SoftBody,
+    SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm, SphereMode, SphereModeKind, Target,
+    TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use std::convert::TryInto;
 use std::path::Path;
@@ -76,7 +76,7 @@ impl ModelInfoStage {
     ///
     /// ```
     /// let path = std::env::var("PMX_FILE").unwrap();
-    /// let model_info_loader = pmx_util::reader::ModelInfoStage::open(path).unwrap();
+    /// let model_info_loader = PMXUtil::reader::ModelInfoStage::open(path).unwrap();
     /// ```
     pub fn open<P: AsRef<Path>>(path: P) -> Option<ModelInfoStage> {
         let mut inner = BinaryReader::open(path).ok()?;
@@ -339,37 +339,42 @@ impl BonesStage {
             position: self.0.read_vec3(),
             parent: self.0.read_bone_index(),
             deform_depth: self.0.read_i32(),
-            bone_flags: BoneFlags::from_bits_truncate(self.0.read_u16()),
-            connection_display_mode: ConnectionDisplayMode::OtherBone(0),
-            appends: None,
-            fixed_axis: None,
-            local_axis: None,
-            external_parent: None,
-            ik_info: None,
+            ..crate::types::Bone::default()
         };
-
-        if ctx.bone_flags.intersects(BoneFlags::CONNECT_TO_OTHER_BONE) {
+        let bone_flags = BoneFlags::from_bits_truncate(self.0.read_u16());
+        if bone_flags.intersects(BoneFlags::CONNECT_TO_OTHER_BONE) {
             ctx.connection_display_mode =
                 ConnectionDisplayMode::OtherBone(self.0.read_bone_index());
         } else {
-            ctx.connection_display_mode = ConnectionDisplayMode::Offset(self.0.read_vec3())
+            ctx.connection_display_mode = ConnectionDisplayMode::Offset(self.0.read_vec3());
         }
-        if ctx
-            .bone_flags
-            .intersects(BoneFlags::INHERIT_TRANSLATION | BoneFlags::INHERIT_ROTATION)
-        {
-            ctx.appends = Some((self.0.read_bone_index(), self.0.read_f32()));
-        }
-        if ctx.bone_flags.intersects(BoneFlags::FIXED_AXIS) {
+        ctx.inherits.inherit_local = bone_flags.intersects(BoneFlags::INHERIT_LOCAL);
+        ctx.inherits.rotate_and_translate = match (
+            bone_flags.intersects(BoneFlags::INHERIT_ROTATION),
+            bone_flags.intersects(BoneFlags::INHERIT_TRANSLATION),
+        ) {
+            (true, true) => {
+                RotateAndTranslateInherits::Both(self.0.read_bone_index(), self.0.read_f32())
+            }
+            (false, false) => RotateAndTranslateInherits::None,
+            (true, false) => {
+                RotateAndTranslateInherits::Rotate(self.0.read_bone_index(), self.0.read_f32())
+            }
+            (false, true) => {
+                RotateAndTranslateInherits::Translate(self.0.read_bone_index(), self.0.read_f32())
+            }
+        };
+
+        if bone_flags.intersects(BoneFlags::FIXED_AXIS) {
             ctx.fixed_axis = Some(self.0.read_vec3());
         }
-        if ctx.bone_flags.intersects(BoneFlags::LOCAL_COORDINATE) {
+        if bone_flags.intersects(BoneFlags::LOCAL_COORDINATE) {
             ctx.local_axis = Some((self.0.read_vec3(), self.0.read_vec3()));
         }
-        if ctx.bone_flags.intersects(BoneFlags::EXTERNAL_PARENT_DEFORM) {
+        if bone_flags.intersects(BoneFlags::EXTERNAL_PARENT_DEFORM) {
             ctx.external_parent = Some(self.0.read_i32());
         }
-        if ctx.bone_flags.intersects(BoneFlags::IK) {
+        if bone_flags.intersects(BoneFlags::IK) {
             ctx.ik_info = Some(BoneIKInfo {
                 ik_target_bone_index: self.0.read_bone_index(),
                 ik_iter_count: self.0.read_i32(),
@@ -377,7 +382,6 @@ impl BonesStage {
                 ik_links: (0..self.0.read_i32()).map(|_| self.read_iklink()).collect(),
             });
         }
-
         ctx
     }
     fn read_iklink(&mut self) -> IKLink {
@@ -541,57 +545,59 @@ impl FrameStage {
 pub struct RigidStage(ReaderInner);
 impl RigidStage {
     pub fn read(mut self) -> (Vec<Rigid>, JointStage) {
-        let len = self.0.read_i32();
-        let mut bodies = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            let name = self.0.read_text_buf();
-            let name_en = self.0.read_text_buf();
-            let bone_index = self.0.read_bone_index();
-            let group = self.0.read_u8();
-            let un_collision_group_flag = self.0.read_u16();
-            let form = match self.0.read_u8() {
-                0 => RigidForm::Sphere,
-                1 => RigidForm::Box,
-                2 => RigidForm::Capsule,
-                _ => {
-                    unreachable!("Invalid  file detected at rigid loader")
-                }
-            };
-            let size = self.0.read_vec3();
-            let position = self.0.read_vec3();
-            let rotation = self.0.read_vec3();
-            let mass = self.0.read_f32();
-            let move_resist = self.0.read_f32();
-            let rotation_resist = self.0.read_f32();
-            let repulsion = self.0.read_f32();
-            let friction = self.0.read_f32();
-            let calc_method = match self.0.read_u8() {
-                0 => RigidCalcMethod::Static,
-                1 => RigidCalcMethod::Dynamic,
-                2 => RigidCalcMethod::DynamicWithBonePosition,
-                _ => {
-                    unreachable!("Invalid  file detected as rigid loader")
-                }
-            };
-            bodies.push(Rigid {
-                name,
-                name_en,
-                bone_index,
-                group,
-                un_collision_group_flag,
-                form,
-                size,
-                position,
-                rotation,
-                mass,
-                move_resist,
-                rotation_resist,
-                repulsion,
-                friction,
-                calc_method,
-            });
-        }
-        (bodies, JointStage(self.0))
+        (
+            (0..self.0.read_i32())
+                .map(|_| {
+                    let name = self.0.read_text_buf();
+                    let name_en = self.0.read_text_buf();
+                    let bone_index = self.0.read_bone_index();
+                    let group = self.0.read_u8();
+                    let un_collision_group_flag = self.0.read_u16();
+                    let form = match self.0.read_u8() {
+                        0 => RigidForm::Sphere,
+                        1 => RigidForm::Box,
+                        2 => RigidForm::Capsule,
+                        _ => {
+                            unreachable!("Invalid  file detected at rigid loader")
+                        }
+                    };
+                    let size = self.0.read_vec3();
+                    let position = self.0.read_vec3();
+                    let rotation = self.0.read_vec3();
+                    let mass = self.0.read_f32();
+                    let move_resist = self.0.read_f32();
+                    let rotation_resist = self.0.read_f32();
+                    let repulsion = self.0.read_f32();
+                    let friction = self.0.read_f32();
+                    let calc_method = match self.0.read_u8() {
+                        0 => RigidCalcMethod::Static,
+                        1 => RigidCalcMethod::Dynamic,
+                        2 => RigidCalcMethod::DynamicWithBonePosition,
+                        _ => {
+                            unreachable!("Invalid  file detected as rigid loader")
+                        }
+                    };
+                    Rigid {
+                        name,
+                        name_en,
+                        bone_index,
+                        group,
+                        un_collision_group_flag,
+                        form,
+                        size,
+                        position,
+                        rotation,
+                        mass,
+                        move_resist,
+                        rotation_resist,
+                        repulsion,
+                        friction,
+                        calc_method,
+                    }
+                })
+                .collect(),
+            JointStage(self.0),
+        )
     }
 }
 
@@ -599,18 +605,15 @@ pub struct JointStage(ReaderInner);
 
 impl JointStage {
     pub fn read(mut self) -> (Vec<Joint>, Option<SoftBodyStage>) {
-        let len = self.0.read_i32();
-        let mut joints = Vec::with_capacity(len as usize);
-        for _ in 0..len {
-            joints.push(self.read_joint());
-        }
-        let next_loader = if self.0.header.version > 2.0 {
-            //this file contains softbody section
-            Some(SoftBodyStage(self.0))
-        } else {
-            None
-        };
-        (joints, next_loader)
+        (
+            (0..self.0.read_i32()).map(|_| self.read_joint()).collect(),
+            if self.0.header.version > 2.0 {
+                //this file contains softbody section
+                Some(SoftBodyStage(self.0))
+            } else {
+                None
+            },
+        )
     }
     fn read_joint(&mut self) -> Joint {
         let name = self.0.read_text_buf();

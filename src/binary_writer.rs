@@ -8,10 +8,11 @@ use std::path::Path;
 use crate::types::{
     Bone, BoneMorph, ConnectionDisplayMode, Face, FlipMorph, Frame, GroupMorph, IKLink,
     ImpulseMorph, Joint, JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid,
-    RigidCalcMethod, RigidForm, SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind, Target,
-    ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
+    RigidCalcMethod, RigidForm, RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel,
+    SoftBodyForm, SphereModeKind, Target, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use crate::types::{Vec2, Vec3, Vec4};
+use std::convert::TryFrom;
 
 /// This is internal use only struct
 /// Do not use this struct
@@ -51,21 +52,21 @@ impl BinaryWriter {
     pub(crate) fn write_text_buf(&mut self, text: &str) {
         let len = text.len();
         if self.is_utf16 {
-            let cv: Vec<u16> = text.encode_utf16().map(u16::to_le).collect();
-            self.write_i32((cv.len() * 2) as i32);
-            for ch in cv {
+            let utf_16_sequence: Vec<u16> = text.encode_utf16().map(u16::to_le).collect();
+            self.write_i32(i32::try_from(utf_16_sequence.len() * 2).unwrap());
+            for ch in utf_16_sequence {
                 self.write_u16(ch);
             }
         } else {
-            self.write_i32(len as i32);
+            self.write_i32(i32::try_from(len).unwrap());
             self.write_vec(text.as_bytes());
         };
     }
 
     pub(crate) fn write_vertex_index(&mut self, size: u8, value: i32) {
         match size {
-            1 => self.write_u8(value as u8),
-            2 => self.write_u16(value as u16),
+            1 => self.write_u8(u8::try_from(value).unwrap()),
+            2 => self.write_u16(u16::try_from(value).unwrap()),
             4 => self.write_i32(value),
             _ => {}
         }
@@ -74,10 +75,10 @@ impl BinaryWriter {
     pub(crate) fn write_sized(&mut self, size: u8, value: i32) {
         match size {
             1 => {
-                self.write_i8(value as i8);
+                self.write_i8(i8::try_from(value).unwrap());
             }
             2 => {
-                self.write_i16(value as i16);
+                self.write_i16(i16::try_from(value).unwrap());
             }
             4 => {
                 self.write_i32(value);
@@ -230,7 +231,8 @@ impl BinaryWriter {
         self.write_vec3(bone.position);
         self.write_sized(s_bone_index, bone.parent);
         self.write_i32(bone.deform_depth);
-        self.write_u16(bone.bone_flags.bits());
+        let bone_flags = bone.calculate_bone_flag();
+        self.write_u16(bone_flags.bits());
         match bone.connection_display_mode {
             ConnectionDisplayMode::OtherBone(x) => {
                 self.write_sized(s_bone_index, x);
@@ -239,9 +241,14 @@ impl BinaryWriter {
                 self.write_vec3(x);
             }
         }
-        if let Some(append) = bone.appends {
-            self.write_sized(s_bone_index, append.0);
-            self.write_f32(append.1);
+        match bone.inherits.rotate_and_translate {
+            RotateAndTranslateInherits::None => {}
+            RotateAndTranslateInherits::Both(bone_index, y)
+            | RotateAndTranslateInherits::Rotate(bone_index, y)
+            | RotateAndTranslateInherits::Translate(bone_index, y) => {
+                self.write_sized(s_bone_index, bone_index);
+                self.write_f32(y);
+            }
         }
         if let Some(axis) = bone.fixed_axis {
             self.write_vec3(axis);
@@ -257,7 +264,7 @@ impl BinaryWriter {
             self.write_sized(s_bone_index, ik_infos.ik_target_bone_index);
             self.write_i32(ik_infos.ik_iter_count);
             self.write_f32(ik_infos.ik_limit_angle);
-            self.write_i32(ik_infos.ik_links.len() as i32);
+            self.write_i32(i32::try_from(ik_infos.ik_links.len()).unwrap());
             for ik_link in ik_infos.ik_links {
                 self.write_ik_link(s_bone_index, &ik_link);
             }
@@ -277,7 +284,7 @@ impl BinaryWriter {
         self.write_text_buf(&morph.english_name);
         self.write_u8(morph.category);
         self.write_u8(morph.morph_type);
-        self.write_i32(morph.morph_data.len() as i32);
+        self.write_i32(i32::try_from(morph.morph_data.len()).unwrap());
         for morph_ in morph.morph_data {
             match morph_ {
                 MorphKinds::Vertex(morph) => self.write_vertex_morph(s_vertex_index, morph),
@@ -346,7 +353,7 @@ impl BinaryWriter {
         self.write_text_buf(&frame.name);
         self.write_text_buf(&frame.name_en);
         self.write_u8(frame.is_special);
-        self.write_i32(frame.inners.len() as i32);
+        self.write_i32(i32::try_from(frame.inners.len()).unwrap());
         for inner in frame.inners {
             match inner.target {
                 Target::Bone => {
@@ -632,14 +639,14 @@ impl BinaryWriter {
         self.write_f32(soft_body.ast);
         self.write_f32(soft_body.vst);
         //anchor rigid
-        self.write_i32(soft_body.anchor_rigid.len() as i32);
+        self.write_i32(i32::try_from(soft_body.anchor_rigid.len()).unwrap());
         for rigid in soft_body.anchor_rigid {
             self.write_sized(s_rigid_index, rigid.rigid_index);
             self.write_vertex_index(s_vertex_index, rigid.vertex_index);
             self.write_u8(if rigid.near_mode { 1 } else { 0 });
         }
         //pin vertex
-        self.write_i32(soft_body.pin_vertex.len() as i32);
+        self.write_i32(i32::try_from(soft_body.pin_vertex.len()).unwrap());
         for vertex in soft_body.pin_vertex {
             self.write_vertex_index(s_vertex_index, vertex);
         }

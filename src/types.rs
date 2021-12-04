@@ -1,3 +1,5 @@
+//! PMX type definitions.
+
 use bitflags::bitflags;
 use std::convert::TryFrom;
 
@@ -27,17 +29,17 @@ pub struct HeaderRaw {
 /// but internal use only so you don't need to care
 #[derive(Debug, Clone)]
 pub struct Header {
-    pub magic: String,
+    pub(crate) magic: String,
     pub version: f32,
-    pub length: u8,
+    pub(crate) length: u8,
     pub encode: Encode,
     pub additional_uv: u8,
-    pub s_vertex_index: VertexIndexKinds,
-    pub s_texture_index: IndexKinds,
-    pub s_material_index: IndexKinds,
-    pub s_bone_index: IndexKinds,
-    pub s_morph_index: IndexKinds,
-    pub s_rigid_body_index: IndexKinds,
+    pub(crate) s_vertex_index: VertexIndexKinds,
+    pub(crate) s_texture_index: IndexKinds,
+    pub(crate) s_material_index: IndexKinds,
+    pub(crate) s_bone_index: IndexKinds,
+    pub(crate) s_morph_index: IndexKinds,
+    pub(crate) s_rigid_body_index: IndexKinds,
 }
 
 /// these are pmx embedded comments and names
@@ -230,8 +232,8 @@ pub enum SphereModeKind {
 /// let see [`SphereModeKind`](crate::types::SphereModeKind)
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct SphereMode {
-    pub(crate) index: i32,
-    pub(crate) kind: SphereModeKind,
+    pub index: i32,
+    pub kind: SphereModeKind,
 }
 
 ///from PMX仕様.txt 297 ~ 303
@@ -284,11 +286,13 @@ pub struct Frame {
     pub is_special: u8,
     pub inners: Vec<FrameInner>,
 }
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct FrameInner {
     pub target: Target,
     pub index: i32,
 }
+
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum Target {
     Bone,
@@ -301,27 +305,136 @@ pub enum ConnectionDisplayMode {
     OtherBone(i32),
     Offset(Vec3),
 }
-
+impl Default for ConnectionDisplayMode {
+    fn default() -> Self {
+        Self::OtherBone(-1)
+    }
+}
 ///from PMX仕様.txt 313 ~ 395
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bone {
     pub name: String,
     pub english_name: String,
     pub position: Vec3,
     pub parent: i32,
     pub deform_depth: i32,
-    pub bone_flags: BoneFlags,
+    /// 0x0001
     pub connection_display_mode: ConnectionDisplayMode,
-    /// from PMX仕様.txt 356 ~ 360
-    pub appends: Option<(i32, f32)>,
-    /// from PMX仕様.txt 362 ~ 365
+    /// 0x0002
+    pub rotatable_in_viewer: bool,
+    /// 0x0004
+    pub translatable_in_viewer: bool,
+    /// 0x0008
+    pub display_bone_in_viewer: bool,
+    /// 0x0010
+    pub controllable_in_viewer: bool,
+    /// 0x0080 0x0100 0x0200
+    pub inherits: BoneInherits,
+    /// 0x0400 from PMX仕様.txt 362 ~ 365
     pub fixed_axis: Option<Vec3>,
-    /// from PMX仕様.txt 367 ~ 371
+    /// 0x0800 from PMX仕様.txt 367 ~ 371
     pub local_axis: Option<(Vec3, Vec3)>,
-    /// from PMX仕様.txt 373 ~ 376
+    /// 0x1000
+    pub physics_after_deform: bool,
+    /// 0x2000 from PMX仕様.txt 373 ~ 376
     pub external_parent: Option<i32>,
-    ///from PMX仕様.txt 378 ~ 396
+    /// 0x0020 from PMX仕様.txt 378 ~ 396
     pub ik_info: Option<BoneIKInfo>,
+}
+impl Bone {
+    pub fn calculate_bone_flag(&self) -> BoneFlags {
+        let mut flags = BoneFlags::empty();
+        //0x0001
+        flags |= match self.connection_display_mode {
+            ConnectionDisplayMode::OtherBone(_) => BoneFlags::CONNECT_TO_OTHER_BONE,
+            ConnectionDisplayMode::Offset(_) => BoneFlags::empty(),
+        };
+        flags |= if self.rotatable_in_viewer {
+            BoneFlags::ROTATABLE
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.translatable_in_viewer {
+            BoneFlags::TRANSLATABLE
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.display_bone_in_viewer {
+            BoneFlags::IS_VISIBLE
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.controllable_in_viewer {
+            BoneFlags::ENABLED
+        } else {
+            BoneFlags::empty()
+        };
+
+        //0x0020
+        flags |= if self.ik_info.is_some() {
+            BoneFlags::IK
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.inherits.inherit_local {
+            BoneFlags::INHERIT_LOCAL
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= match self.inherits.rotate_and_translate {
+            RotateAndTranslateInherits::None | RotateAndTranslateInherits::Translate(_, _) => {
+                BoneFlags::empty()
+            }
+            RotateAndTranslateInherits::Both(_, _) | RotateAndTranslateInherits::Rotate(_, _) => {
+                BoneFlags::INHERIT_ROTATION
+            }
+        };
+        flags |= match self.inherits.rotate_and_translate {
+            RotateAndTranslateInherits::None | RotateAndTranslateInherits::Rotate(_, _) => {
+                BoneFlags::empty()
+            }
+            RotateAndTranslateInherits::Both(_, _)
+            | RotateAndTranslateInherits::Translate(_, _) => BoneFlags::INHERIT_TRANSLATION,
+        };
+        flags |= if self.fixed_axis.is_some() {
+            BoneFlags::FIXED_AXIS
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.local_axis.is_some() {
+            BoneFlags::LOCAL_COORDINATE
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.physics_after_deform {
+            BoneFlags::PHYSICS_AFTER_DEFORM
+        } else {
+            BoneFlags::empty()
+        };
+        flags |= if self.external_parent.is_some() {
+            BoneFlags::EXTERNAL_PARENT_DEFORM
+        } else {
+            BoneFlags::empty()
+        };
+        flags
+    }
+}
+#[derive(Debug, Copy, Clone, PartialEq, Default)]
+pub struct BoneInherits {
+    pub inherit_local: bool,
+    pub rotate_and_translate: RotateAndTranslateInherits,
+}
+#[derive(Debug, Copy, Clone, PartialEq)]
+pub enum RotateAndTranslateInherits {
+    None,
+    Both(i32, f32),
+    Rotate(i32, f32),
+    Translate(i32, f32),
+}
+impl Default for RotateAndTranslateInherits {
+    fn default() -> Self {
+        Self::None
+    }
 }
 /// from PMX仕様.txt 378 ~ 396
 #[derive(Debug, Clone, PartialEq)]
@@ -482,7 +595,6 @@ pub struct Joint {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum JointType {
-    ///Support from Util 0.4.0
     Spring6DOF {
         a_rigid_index: i32,
         b_rigid_index: i32,

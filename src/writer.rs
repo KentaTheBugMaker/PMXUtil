@@ -14,9 +14,9 @@ use std::path::Path;
 ///
 /// When write was called all data was wrote and dropped.
 /// ```rust
-/// use pmx_util::types::ModelInfo;
+/// use PMXUtil::types::ModelInfo;
 /// let vertices = vec![];
-/// let mut writer=pmx_util::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
+/// let mut writer=PMXUtil::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
 /// writer.set_model_info(&ModelInfo{
 /// name:"PMXモデル名".to_owned(),
 /// name_en:"A PMX Model Name".to_owned(),
@@ -58,7 +58,7 @@ impl Writer {
     /// # Examples
     ///
     /// ```
-    /// let mut writer=pmx_util::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
+    /// let mut writer=PMXUtil::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true).unwrap();
     /// ```
     pub fn begin_writer<P: AsRef<Path>>(path: P, encode_to_utf_16: bool) -> Result<Writer, Error> {
         let inner = BinaryWriter::create(path, encode_to_utf_16)?;

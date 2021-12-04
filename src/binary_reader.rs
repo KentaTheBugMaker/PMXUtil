@@ -1,4 +1,5 @@
 use crate::types::{Encode, HeaderRaw, IndexKinds, Vec2, Vec3, Vec4, VertexIndexKinds};
+use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, Error, Read};
 use std::mem::transmute;
@@ -21,11 +22,10 @@ pub(crate) struct BinaryReader {
 impl BinaryReader {
     pub(crate) fn open<P: AsRef<Path>>(path: P) -> Result<BinaryReader, Error> {
         let file = File::open(&path);
-        let file_size = std::fs::metadata(&path).unwrap().len();
 
         match file {
             Ok(file) => {
-                let inner = BufReader::with_capacity(file_size as usize, file);
+                let inner = BufReader::new(file);
                 Ok(BinaryReader { inner })
             }
             Err(err) => Err(err),
@@ -38,7 +38,7 @@ impl BinaryReader {
     }
     pub(crate) fn read_text_buf(&mut self, encode: Encode) -> String {
         let length = self.read_i32();
-        let v = self.read_vec(length as usize);
+        let v = self.read_vec(usize::try_from(length).unwrap());
         match encode {
             Encode::UTF8 => String::from_utf8(v).unwrap(),
             Encode::Utf16Le => encoding_rs::UTF_16LE.decode(&v).0.to_string(),
@@ -55,8 +55,8 @@ impl BinaryReader {
 
     pub(crate) fn read_sized(&mut self, types: IndexKinds) -> i32 {
         match types {
-            IndexKinds::I8 => self.read_i8() as i32,
-            IndexKinds::I16 => self.read_i16() as i32,
+            IndexKinds::I8 => i32::from(self.read_i8()),
+            IndexKinds::I16 => i32::from(self.read_i16()),
             IndexKinds::I32 => self.read_i32(),
         }
     }
