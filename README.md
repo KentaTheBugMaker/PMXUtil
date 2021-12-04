@@ -2,6 +2,11 @@
 ## A PMX reader and writer written in Rust
 ### What can this crate do
 all of pmx related jobs.
+### Conformance Test
+PMX 2.0 I/O tested by
+ 1. read original file and write it to another file
+ 2. compare these file  by `cargo test`
+ 3. compare these file by WinMerge 
 ### WIP
   * improving docs
 
@@ -50,4 +55,5 @@ println!("{:#?}", materials);
 ```
 ## Note 
 
- more example for https://github.com/t18b219k/PMXViewer_VK
+ more example for https://github.com/t18b219k/n_pmx_viewer
+ 
