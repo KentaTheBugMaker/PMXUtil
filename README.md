@@ -14,7 +14,7 @@ PMX 2.0 I/O tested by
 
 ###  Create reader instance and read  
 
-```rust
+``` rust
 let mut loader= ModelInfoStage::open("/path/to/pmxfile").unwrap();
 let header = loader.get_header();
 println!("{:#?}", header);
@@ -33,7 +33,7 @@ println!("{:#?}", materials);
 ### Create Writer instance and write
     you can choose text encoding UTF-8 or UTF-16LE but MMD only support UTF-16LE.
 
-```rust
+``` rust
 
         use pmx_util::writer::Writer;
         let mut writer =Writer::begin_writer("/path/to/pmxfile").unwrap();

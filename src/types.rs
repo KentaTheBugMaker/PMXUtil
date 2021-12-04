@@ -79,7 +79,7 @@ pub enum VertexWeight {
     /// spherical deforming bones
     ///
     /// We can't find official `SDEF` code but maybe this code usable.
-    /// ```hlsl
+    /// ``` hlsl
     /// //    影響度算出
     /// void CalcSdefWeight( out float _rWeight0,
     ///                      out float _rWeight1,
@@ -157,7 +157,7 @@ pub enum VertexWeight {
 /// 仕様.txt 184~252
 ///
 /// you can pass by below codes
-/// ```glsl
+/// ``` glsl
 ///  // per vertex
 ///  layout(location = 0) in vec3 a_pos;
 ///  layout(location = 1) in vec3 a_normal;
@@ -247,7 +247,7 @@ pub enum ToonMode {
 /// from PMX仕様.txt 276~310
 ///
 /// as a sample you can pass Vulkan like glsl code.
-/// ```glsl
+/// ``` glsl
 /// layout (set = 0 ,binding = 0) Material{
 ///     vec4 diffuse;
 ///     vec3 specular;
