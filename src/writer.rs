@@ -2,8 +2,8 @@
 
 use crate::binary_writer::BinaryWriter;
 use crate::types::{
-    Bone, Face, Frame, Joint, JointType, Material, ModelInfo, Morph, Rigid, SoftBody, Vertex,
-    VertexWeight,
+    Bone, Face, Frame, Joint, JointType, Material, ModelInfo, Morph, MorphKinds, Rigid, SoftBody,
+    Vertex, VertexWeight,
 };
 use std::io::{Error, Write};
 use std::path::Path;
@@ -154,7 +154,12 @@ impl Writer {
             .vertices
             .iter()
             .find(|vertex| matches!(vertex.weight_type, VertexWeight::QDEF { .. }));
-        let morph = self.morphs.iter().find(|morph| morph.morph_type > 8);
+        let morph = self.morphs.iter().find(|morph| {
+            matches!(
+                morph.morph_data,
+                MorphKinds::Flip(_) | MorphKinds::Impulse(_)
+            )
+        });
         let joint = self.joints.iter().find(|joint| {
             matches!(
                 joint.joint_type,

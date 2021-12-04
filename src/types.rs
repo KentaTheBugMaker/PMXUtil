@@ -459,25 +459,30 @@ pub struct IKLink {
 pub struct Morph {
     pub name: String,
     pub english_name: String,
-    pub category: u8,
-    pub morph_type: u8,
-    pub offset: i32,
-    pub morph_data: Vec<MorphKinds>,
+    pub control_panel: ControlPanel,
+    pub morph_data: MorphKinds,
 }
-
+#[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Ord, Eq)]
+pub enum ControlPanel {
+    BottomLeft,
+    TopLeft,
+    TopRight,
+    BottomRight,
+    System,
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum MorphKinds {
-    Vertex(VertexMorph),
-    UV(UVMorph),
-    UV1(UVMorph),
-    UV2(UVMorph),
-    UV3(UVMorph),
-    UV4(UVMorph),
-    Bone(BoneMorph),
-    Material(MaterialMorph),
-    Group(GroupMorph),
-    Flip(FlipMorph),
-    Impulse(ImpulseMorph),
+    Vertex(Vec<VertexMorph>),
+    UV(Vec<UVMorph>),
+    UV1(Vec<UVMorph>),
+    UV2(Vec<UVMorph>),
+    UV3(Vec<UVMorph>),
+    UV4(Vec<UVMorph>),
+    Bone(Vec<BoneMorph>),
+    Material(Vec<MaterialMorph>),
+    Group(Vec<GroupMorph>),
+    Flip(Vec<FlipMorph>),
+    Impulse(Vec<ImpulseMorph>),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

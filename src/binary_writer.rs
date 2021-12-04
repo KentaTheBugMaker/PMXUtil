@@ -6,8 +6,8 @@ use std::mem::transmute;
 use std::path::Path;
 
 use crate::types::{
-    Bone, BoneMorph, ConnectionDisplayMode, Face, FlipMorph, Frame, GroupMorph, IKLink,
-    ImpulseMorph, Joint, JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid,
+    Bone, BoneMorph, ConnectionDisplayMode, ControlPanel, Face, FlipMorph, Frame, GroupMorph,
+    IKLink, ImpulseMorph, Joint, JointType, Material, MaterialMorph, Morph, MorphKinds, Rigid,
     RigidCalcMethod, RigidForm, RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel,
     SoftBodyForm, SphereModeKind, Target, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
@@ -282,22 +282,79 @@ impl BinaryWriter {
     ) {
         self.write_text_buf(&morph.name);
         self.write_text_buf(&morph.english_name);
-        self.write_u8(morph.category);
-        self.write_u8(morph.morph_type);
-        self.write_i32(i32::try_from(morph.morph_data.len()).unwrap());
-        for morph_ in morph.morph_data {
-            match morph_ {
-                MorphKinds::Vertex(morph) => self.write_vertex_morph(s_vertex_index, morph),
-                MorphKinds::UV(morph)
-                | MorphKinds::UV1(morph)
-                | MorphKinds::UV2(morph)
-                | MorphKinds::UV3(morph)
-                | MorphKinds::UV4(morph) => self.write_uv_morph(s_vertex_index, morph),
-                MorphKinds::Bone(morph) => self.write_bone_morph(s_bone_index, morph),
-                MorphKinds::Material(morph) => self.write_material_morph(s_material_index, &morph),
-                MorphKinds::Group(morph) => self.write_group_morph(s_morph_index, morph),
-                MorphKinds::Flip(morph) => self.write_flip_morph(s_morph_index, &morph),
-                MorphKinds::Impulse(morph) => self.write_impulse_morph(s_rigid_index, &morph),
+        self.write_u8(match morph.control_panel {
+            ControlPanel::BottomLeft => 1,
+            ControlPanel::TopLeft => 2,
+            ControlPanel::TopRight => 3,
+            ControlPanel::BottomRight => 4,
+            ControlPanel::System => 0,
+        });
+        match morph.morph_data {
+            MorphKinds::Group(x) => {
+                self.write_u8(0);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_group_morph(s_morph_index, x));
+            }
+            MorphKinds::Vertex(x) => {
+                self.write_u8(1);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_vertex_morph(s_vertex_index, x));
+            }
+            MorphKinds::Bone(x) => {
+                self.write_u8(2);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_bone_morph(s_bone_index, x));
+            }
+            MorphKinds::UV(x) => {
+                self.write_u8(3);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_uv_morph(s_vertex_index, x));
+            }
+            MorphKinds::UV1(x) => {
+                self.write_u8(4);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_uv_morph(s_vertex_index, x));
+            }
+            MorphKinds::UV2(x) => {
+                self.write_u8(5);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_uv_morph(s_vertex_index, x));
+            }
+            MorphKinds::UV3(x) => {
+                self.write_u8(6);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_uv_morph(s_vertex_index, x));
+            }
+            MorphKinds::UV4(x) => {
+                self.write_u8(7);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.into_iter()
+                    .for_each(|x| self.write_uv_morph(s_vertex_index, x));
+            }
+            MorphKinds::Material(x) => {
+                self.write_u8(8);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.iter()
+                    .for_each(|x| self.write_material_morph(s_material_index, x));
+            }
+            MorphKinds::Flip(x) => {
+                self.write_u8(9);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.iter()
+                    .for_each(|x| self.write_flip_morph(s_morph_index, x));
+            }
+            MorphKinds::Impulse(x) => {
+                self.write_u8(10);
+                self.write_i32(i32::try_from(x.len()).unwrap());
+                x.iter()
+                    .for_each(|x| self.write_impulse_morph(s_rigid_index, x));
             }
         }
     }

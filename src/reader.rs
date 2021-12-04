@@ -24,12 +24,12 @@
 
 use crate::binary_reader::BinaryReader;
 use crate::types::{
-    Bone, BoneFlags, BoneIKInfo, BoneInherits, BoneMorph, ConnectionDisplayMode, Encode, Face,
-    Frame, FrameInner, GroupMorph, Header, HeaderConversionError, HeaderRaw, IKLink, Joint,
-    JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph, ModelInfo, Morph,
-    MorphKinds, Rigid, RigidCalcMethod, RigidForm, RotateAndTranslateInherits, SoftBody,
-    SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm, SphereMode, SphereModeKind, Target,
-    TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
+    Bone, BoneFlags, BoneIKInfo, BoneMorph, ConnectionDisplayMode, ControlPanel, Encode, Face,
+    FlipMorph, Frame, FrameInner, GroupMorph, Header, HeaderConversionError, HeaderRaw, IKLink,
+    ImpulseMorph, Joint, JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph,
+    ModelInfo, Morph, MorphKinds, Rigid, RigidCalcMethod, RigidForm, RotateAndTranslateInherits,
+    SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm, SphereMode, SphereModeKind,
+    Target, TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use std::convert::TryInto;
 use std::path::Path;
@@ -253,71 +253,56 @@ impl MaterialsStage {
     /// please read [Material](crate::types::Material) doc
     pub fn read(mut self) -> (Vec<Material>, BonesStage) {
         (
-            (0..self.0.read_i32()).fold(vec![], |mut materials, _| {
-                materials.push(self.read_pmx_material());
-                materials
-            }),
+            (0..self.0.read_i32())
+                .map(|_| self.read_pmx_material())
+                .collect(),
             BonesStage(self.0),
         )
     }
 
     fn read_pmx_material(&mut self) -> Material {
-        let mut ctx = Material {
-            name: "".to_string(),
-            english_name: "".to_string(),
-            diffuse: [0.0; 4],
-            specular: [0.0; 3],
-            specular_factor: 0.0,
-            ambient: [0.0; 3],
-            draw_mode: MaterialFlags::from_bits_truncate(0),
-            edge_color: [0.0; 4],
-            edge_size: 0.0,
-            texture_index: 0,
-            sphere_mode: None,
-            toon_mode: ToonMode::Common(0),
-            memo: "".to_string(),
-            num_face_vertices: 0,
-        };
-        ctx.name = self.0.read_text_buf();
-        ctx.english_name = self.0.read_text_buf();
-        ctx.diffuse = self.0.read_vec4();
-        ctx.specular = self.0.read_vec3();
-        ctx.specular_factor = self.0.read_f32();
-        ctx.ambient = self.0.read_vec3();
-        ctx.draw_mode = MaterialFlags::from_bits_truncate(self.0.read_u8());
-        ctx.edge_color = self.0.read_vec4();
-        ctx.edge_size = self.0.read_f32();
-        ctx.texture_index = self.0.read_texture_index();
-        let ti = self.0.read_texture_index();
-        let spmode = self.0.read_u8();
-        ctx.sphere_mode = match spmode {
-            0 => None,
-            1 => Some(SphereMode {
-                index: ti,
-                kind: SphereModeKind::Mul,
-            }),
-            2 => Some(SphereMode {
-                index: ti,
-                kind: SphereModeKind::Add,
-            }),
-            3 => Some(SphereMode {
-                index: ti,
-                kind: SphereModeKind::SubTexture,
-            }),
-            _ => {
-                panic!("Error Unknown SphereMode:{}", spmode);
-            }
-        };
-
-        let toonmode = self.0.read_u8();
-        ctx.toon_mode = match toonmode {
-            0 => ToonMode::Separate(self.0.read_texture_index()),
-            1 => ToonMode::Common(self.0.read_u8()),
-            _ => panic!("Error Unknown Toon flag:{}", toonmode),
-        };
-        ctx.memo = self.0.read_text_buf();
-        ctx.num_face_vertices = self.0.read_i32();
-        ctx
+        Material {
+            name: self.0.read_text_buf(),
+            english_name: self.0.read_text_buf(),
+            diffuse: self.0.read_vec4(),
+            specular: self.0.read_vec3(),
+            specular_factor: self.0.read_f32(),
+            ambient: self.0.read_vec3(),
+            draw_mode: MaterialFlags::from_bits_truncate(self.0.read_u8()),
+            edge_color: self.0.read_vec4(),
+            edge_size: self.0.read_f32(),
+            texture_index: self.0.read_texture_index(),
+            sphere_mode: {
+                let ti = self.0.read_texture_index();
+                match self.0.read_u8() {
+                    0 => None,
+                    1 => Some(SphereMode {
+                        kind: SphereModeKind::Mul,
+                        index: ti,
+                    }),
+                    2 => Some(SphereMode {
+                        kind: SphereModeKind::Add,
+                        index: ti,
+                    }),
+                    3 => Some(SphereMode {
+                        kind: SphereModeKind::SubTexture,
+                        index: ti,
+                    }),
+                    _ => {
+                        panic!("Invalid sphere mode detected in material")
+                    }
+                }
+            },
+            toon_mode: match self.0.read_u8() {
+                0 => ToonMode::Separate(self.0.read_texture_index()),
+                1 => ToonMode::Common(self.0.read_u8()),
+                _ => {
+                    panic!("Invalid toon mode detected in material")
+                }
+            },
+            memo: self.0.read_text_buf(),
+            num_face_vertices: self.0.read_i32(),
+        }
     }
 }
 pub struct BonesStage(ReaderInner);
@@ -342,6 +327,10 @@ impl BonesStage {
             ..crate::types::Bone::default()
         };
         let bone_flags = BoneFlags::from_bits_truncate(self.0.read_u16());
+        ctx.controllable_in_viewer = bone_flags.intersects(BoneFlags::ENABLED);
+        ctx.display_bone_in_viewer = bone_flags.intersects(BoneFlags::IS_VISIBLE);
+        ctx.rotatable_in_viewer = bone_flags.intersects(BoneFlags::ROTATABLE);
+        ctx.translatable_in_viewer = bone_flags.intersects(BoneFlags::TRANSLATABLE);
         if bone_flags.intersects(BoneFlags::CONNECT_TO_OTHER_BONE) {
             ctx.connection_display_mode =
                 ConnectionDisplayMode::OtherBone(self.0.read_bone_index());
@@ -410,98 +399,132 @@ impl MorphsStage {
     }
 
     fn read_pmx_morph(&mut self) -> Morph {
-        let mut ctx = Morph {
-            name: "".to_string(),
-            english_name: "".to_string(),
-            category: 0,
-            morph_type: 0,
-            offset: 0,
-            morph_data: vec![],
-        };
-        ctx.name = self.0.read_text_buf();
-        ctx.english_name = self.0.read_text_buf();
-        ctx.category = self.0.read_u8();
-        ctx.morph_type = self.0.read_u8();
-        ctx.offset = self.0.read_i32();
-        let mut v = vec![];
-        for _ in 0..ctx.offset {
-            let morph = match ctx.morph_type {
-                0 => MorphKinds::Group(self.read_group_morph()),
-                1 => MorphKinds::Vertex(self.read_vertex_morph()),
-                2 => MorphKinds::Bone(self.read_bone_morph()),
-                3 => MorphKinds::UV(self.read_uv_morph()),
-                4 => MorphKinds::UV1(self.read_uv_morph()),
-                5 => MorphKinds::UV2(self.read_uv_morph()),
-                6 => MorphKinds::UV3(self.read_uv_morph()),
-                7 => MorphKinds::UV4(self.read_uv_morph()),
-                8 => MorphKinds::Material(self.read_material_morph()),
-                _ => panic!("Unexpected morph type:{}", ctx.morph_type),
-            };
-            v.push(morph);
+        Morph {
+            name: self.0.read_text_buf(),
+            english_name: self.0.read_text_buf(),
+            control_panel: match self.0.read_u8() {
+                0 => ControlPanel::System,
+                1 => ControlPanel::BottomLeft,
+                2 => ControlPanel::TopLeft,
+                3 => ControlPanel::TopRight,
+                4 => ControlPanel::BottomRight,
+                x => panic!("Detected unknown morph control panel {} ", x),
+            },
+            morph_data: {
+                let morph_kind = self.0.read_u8();
+                match morph_kind {
+                    0 => MorphKinds::Group(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_group_morph())
+                            .collect(),
+                    ),
+                    1 => MorphKinds::Vertex(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_vertex_morph())
+                            .collect(),
+                    ),
+                    2 => MorphKinds::Bone(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_bone_morph())
+                            .collect(),
+                    ),
+                    3 => MorphKinds::UV(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_uv_morph())
+                            .collect(),
+                    ),
+                    4 => MorphKinds::UV1(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_uv_morph())
+                            .collect(),
+                    ),
+                    5 => MorphKinds::UV2(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_uv_morph())
+                            .collect(),
+                    ),
+                    6 => MorphKinds::UV3(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_uv_morph())
+                            .collect(),
+                    ),
+                    7 => MorphKinds::UV4(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_uv_morph())
+                            .collect(),
+                    ),
+                    8 => MorphKinds::Material(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_material_morph())
+                            .collect(),
+                    ),
+                    9 => MorphKinds::Flip(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_flip_morph())
+                            .collect(),
+                    ),
+                    10 => MorphKinds::Impulse(
+                        (0..self.0.read_i32())
+                            .map(|_| self.read_impulse_morph())
+                            .collect(),
+                    ),
+                    x => panic!("Unknown morph kind {} detected.", x),
+                }
+            },
         }
-        ctx.morph_data = v;
-        ctx
     }
     fn read_vertex_morph(&mut self) -> VertexMorph {
-        let mut ctx = VertexMorph {
-            index: 0,
-            offset: [0.0; 3],
-        };
-        ctx.index = self.0.read_vertex_index();
-        ctx.offset = self.0.read_vec3();
-        ctx
+        VertexMorph {
+            index: self.0.read_vertex_index(),
+            offset: self.0.read_vec3(),
+        }
     }
     fn read_uv_morph(&mut self) -> UVMorph {
-        let mut ctx = UVMorph {
-            index: 0,
-            offset: [0.0; 4],
-        };
-        ctx.index = self.0.read_vertex_index();
-        ctx.offset = self.0.read_vec4();
-        ctx
+        UVMorph {
+            index: self.0.read_vertex_index(),
+            offset: self.0.read_vec4(),
+        }
     }
     fn read_bone_morph(&mut self) -> BoneMorph {
-        let mut ctx = BoneMorph {
-            index: 0,
-            translates: [0.0; 3],
-            rotates: [0.0; 4],
-        };
-        ctx.index = self.0.read_bone_index();
-        ctx.translates = self.0.read_vec3();
-        ctx.rotates = self.0.read_vec4();
-        ctx
+        BoneMorph {
+            index: self.0.read_bone_index(),
+            translates: self.0.read_vec3(),
+            rotates: self.0.read_vec4(),
+        }
     }
     fn read_material_morph(&mut self) -> MaterialMorph {
-        let mut ctx = MaterialMorph {
-            index: 0,
-            formula: 0,
-            diffuse: [0.0; 4],
-            specular: [0.0; 3],
-            specular_factor: 0.0,
-            ambient: [0.0; 3],
-            edge_color: [0.0; 4],
-            edge_size: 0.0,
-            texture_factor: [0.0; 4],
-            sphere_texture_factor: [0.0; 4],
-            toon_texture_factor: [0.0; 4],
-        };
-        ctx.index = self.0.read_material_index();
-        ctx.formula = self.0.read_u8();
-        ctx.diffuse = self.0.read_vec4();
-        ctx.specular = self.0.read_vec3();
-        ctx.specular_factor = self.0.read_f32();
-        ctx.ambient = self.0.read_vec3();
-        ctx.edge_color = self.0.read_vec4();
-        ctx.edge_size = self.0.read_f32();
-        ctx.texture_factor = self.0.read_vec4();
-        ctx.sphere_texture_factor = self.0.read_vec4();
-        ctx.toon_texture_factor = self.0.read_vec4();
-        ctx
+        MaterialMorph {
+            index: self.0.read_material_index(),
+            formula: self.0.read_u8(),
+            diffuse: self.0.read_vec4(),
+            specular: self.0.read_vec3(),
+            specular_factor: self.0.read_f32(),
+            ambient: self.0.read_vec3(),
+            edge_color: self.0.read_vec4(),
+            edge_size: self.0.read_f32(),
+            texture_factor: self.0.read_vec4(),
+            sphere_texture_factor: self.0.read_vec4(),
+            toon_texture_factor: self.0.read_vec4(),
+        }
     }
     fn read_group_morph(&mut self) -> GroupMorph {
         GroupMorph {
             index: self.0.read_morph_index(),
             morph_factor: self.0.read_f32(),
+        }
+    }
+    fn read_flip_morph(&mut self) -> FlipMorph {
+        FlipMorph {
+            index: self.0.read_morph_index(),
+            morph_factor: self.0.read_f32(),
+        }
+    }
+    fn read_impulse_morph(&mut self) -> ImpulseMorph {
+        ImpulseMorph {
+            rigid_index: self.0.read_rigid_index(),
+            is_local: self.0.read_u8(),
+            velocity: self.0.read_vec3(),
+            torque: self.0.read_vec3(),
         }
     }
 }
