@@ -7,9 +7,9 @@ use std::path::Path;
 
 use crate::types::{
     Bone, BoneMorph, ConnectionDisplayMode, ControlPanel, Encode, Face, FlipMorph, Frame,
-    GroupMorph, Header, IKLink, ImpulseMorph, IndexKinds, Joint, JointType, Material,
+    FrameInner, GroupMorph, Header, IKLink, ImpulseMorph, IndexKinds, Joint, JointType, Material,
     MaterialMorph, Morph, MorphKinds, PMXVersion, Rigid, RigidCalcMethod, RigidForm,
-    RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind, Target,
+    RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel, SoftBodyForm, SphereModeKind,
     ToonMode, UVMorph, Vertex, VertexIndexKinds, VertexMorph, VertexWeight,
 };
 use crate::types::{Vec2, Vec3, Vec4};
@@ -244,12 +244,10 @@ impl BinaryWriter {
 
     pub(crate) fn write_ik_link(&mut self, ik_link: &IKLink) {
         self.write_bone_index(ik_link.ik_bone_index);
+        self.write_bool(ik_link.angle_limit.is_some());
         if let Some(limits) = ik_link.angle_limit {
-            self.write_u8(1);
             self.write_vec3(limits.0);
             self.write_vec3(limits.1);
-        } else {
-            self.write_u8(0);
         }
     }
 
@@ -411,7 +409,7 @@ impl BinaryWriter {
 
     fn write_impulse_morph(&mut self, morph: &ImpulseMorph) {
         self.write_rigid_index(morph.rigid_index);
-        self.write_u8(morph.is_local);
+        self.write_bool(morph.is_local);
         self.write_vec3(morph.velocity);
         self.write_vec3(morph.torque);
     }
@@ -419,16 +417,16 @@ impl BinaryWriter {
     pub(crate) fn write_frame(&mut self, frame: &Frame) {
         self.write_text_buf(&frame.name);
         self.write_text_buf(&frame.name_en);
-        self.write_u8(frame.is_special);
+        self.write_bool(frame.is_special);
         self.write_i32(i32::try_from(frame.inners.len()).unwrap());
-        frame.inners.iter().for_each(|inner| match inner.target {
-            Target::Bone => {
+        frame.inners.iter().for_each(|inner| match inner {
+            FrameInner::Bone(index) => {
                 self.write_u8(0);
-                self.write_bone_index(inner.index);
+                self.write_bone_index(*index);
             }
-            Target::Morph => {
+            FrameInner::Morph(index) => {
                 self.write_u8(1);
-                self.write_morph_index(inner.index);
+                self.write_morph_index(*index);
             }
         });
     }
@@ -702,7 +700,7 @@ impl BinaryWriter {
         soft_body.anchor_rigid.iter().for_each(|anchor_rigid| {
             self.write_rigid_index(anchor_rigid.rigid_index);
             self.write_vertex_index(anchor_rigid.vertex_index);
-            self.write_u8(if anchor_rigid.near_mode { 1 } else { 0 });
+            self.write_bool(anchor_rigid.near_mode);
         });
 
         //pin vertex
@@ -721,4 +719,12 @@ impl BinaryWriter {
     write_bin!(write_u16, u16);
     write_bin!(write_i8, i8);
     write_bin!(write_u8, u8);
+    /// write `true` as `1_u8` , `false` as `0_u8`
+    fn write_bool(&mut self, v: bool) {
+        if v {
+            self.write_u8(1);
+        } else {
+            self.write_u8(0);
+        }
+    }
 }

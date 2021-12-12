@@ -29,8 +29,7 @@ use crate::types::{
     ImpulseMorph, Joint, JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph,
     ModelInfo, Morph, MorphKinds, PMXVersion, Rigid, RigidCalcMethod, RigidForm,
     RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm,
-    SphereMode, SphereModeKind, Target, TextureList, ToonMode, UVMorph, Vertex, VertexMorph,
-    VertexWeight,
+    SphereMode, SphereModeKind, TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use std::convert::TryInto;
 use std::path::Path;
@@ -140,12 +139,14 @@ impl VerticesStage {
         ctx.position = self.0.read_vec3();
         ctx.norm = self.0.read_vec3();
         ctx.uv = self.0.read_vec2();
-        let additional_uv = self.0.header.additional_uv as usize;
-        if additional_uv > 0 {
-            for i in 0..additional_uv {
-                ctx.add_uv[i] = self.0.read_vec4();
-            }
-        }
+
+        ctx.add_uv
+            .iter_mut()
+            .take(self.0.header.additional_uv as usize)
+            .for_each(|slot| {
+                *slot = self.0.read_vec4();
+            });
+
         let weight_type = self.0.read_u8();
         ctx.weight_type = match weight_type {
             0 => {
@@ -535,7 +536,7 @@ impl MorphsStage {
     fn read_impulse_morph(&mut self) -> ImpulseMorph {
         ImpulseMorph {
             rigid_index: self.0.read_rigid_index(),
-            is_local: self.0.read_u8(),
+            is_local: self.0.read_bool().unwrap(),
             velocity: self.0.read_vec3(),
             torque: self.0.read_vec3(),
         }
@@ -553,19 +554,13 @@ impl FrameStage {
                 .map(|_| Frame {
                     name: self.0.read_text_buf(),
                     name_en: self.0.read_text_buf(),
-                    is_special: self.0.read_u8(),
+                    is_special: self.0.read_bool().unwrap(),
                     inners: (0..self.0.read_i32())
                         .map(|_| {
                             let target = self.0.read_u8();
                             match target {
-                                0 => FrameInner {
-                                    target: Target::Bone,
-                                    index: self.0.read_bone_index(),
-                                },
-                                1 => FrameInner {
-                                    target: Target::Morph,
-                                    index: self.0.read_morph_index(),
-                                },
+                                0 => FrameInner::Bone(self.0.read_bone_index()),
+                                1 => FrameInner::Morph(self.0.read_morph_index()),
                                 x => {
                                     panic!("Invalid frame target detected {}", x)
                                 }
@@ -906,5 +901,8 @@ impl ReaderInner {
 
     pub fn read_text_buf(&mut self) -> String {
         self.inner.read_text_buf(self.header.encode)
+    }
+    pub fn read_bool(&mut self) -> Option<bool> {
+        self.inner.read_bool()
     }
 }

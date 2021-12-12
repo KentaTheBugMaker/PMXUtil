@@ -247,6 +247,7 @@ pub struct SphereMode {
 /// represent which texture need to use for toon
 /// * Separate use texture in texture list
 /// * Common use embedded  texture in MMD or `PMXe`
+///
 /// refer  PMX仕様.txt 297 ~ 303
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ToonMode {
@@ -291,25 +292,20 @@ pub struct Material {
     pub memo: String,
     pub num_face_vertices: i32,
 }
+
 ///from PMX仕様.txt 476 ~ 497
 #[derive(Debug, Clone, PartialEq)]
 pub struct Frame {
     pub name: String,
     pub name_en: String,
-    pub is_special: u8,
+    pub is_special: bool,
     pub inners: Vec<FrameInner>,
 }
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub struct FrameInner {
-    pub target: Target,
-    pub index: i32,
-}
-
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-pub enum Target {
-    Bone,
-    Morph,
+pub enum FrameInner {
+    Bone(i32),
+    Morph(i32),
 }
 
 ///refer PMX仕様.txt 348 ~ 354
@@ -558,7 +554,7 @@ pub struct FlipMorph {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ImpulseMorph {
     pub rigid_index: i32,
-    pub is_local: u8,
+    pub is_local: bool,
     pub velocity: Vec3,
     pub torque: Vec3,
 }

@@ -70,4 +70,12 @@ impl BinaryReader {
     read_bin!(read_u16, u16);
     read_bin!(read_i8, i8);
     read_bin!(read_u8, u8);
+    /// read `0_u8` as `false`, `1_u8` as `true`
+    pub(crate) fn read_bool(&mut self) -> Option<bool> {
+        match self.read_u8() {
+            0 => Some(false),
+            1 => Some(true),
+            _ => None,
+        }
+    }
 }
