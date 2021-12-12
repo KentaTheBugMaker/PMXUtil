@@ -27,9 +27,10 @@ use crate::types::{
     Bone, BoneFlags, BoneIKInfo, BoneMorph, ConnectionDisplayMode, ControlPanel, Encode, Face,
     FlipMorph, Frame, FrameInner, GroupMorph, Header, HeaderConversionError, HeaderRaw, IKLink,
     ImpulseMorph, Joint, JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph,
-    ModelInfo, Morph, MorphKinds, Rigid, RigidCalcMethod, RigidForm, RotateAndTranslateInherits,
-    SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm, SphereMode, SphereModeKind,
-    Target, TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
+    ModelInfo, Morph, MorphKinds, PMXVersion, Rigid, RigidCalcMethod, RigidForm,
+    RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm,
+    SphereMode, SphereModeKind, Target, TextureList, ToonMode, UVMorph, Vertex, VertexMorph,
+    VertexWeight,
 };
 use std::convert::TryInto;
 use std::path::Path;
@@ -38,7 +39,19 @@ fn transform_header_c2r(header: &HeaderRaw) -> Result<Header, HeaderConversionEr
     if header.magic == [0x50, 0x4d, 0x58, 0x20] {
         Ok(Header {
             magic: "PMX ".to_owned(),
-            version: header.version,
+            version: if header.version >= 2.0 {
+                if header.version < 2.2 {
+                    if header.version > 2.05 {
+                        PMXVersion::V21
+                    } else {
+                        PMXVersion::V20
+                    }
+                } else {
+                    return Err(HeaderConversionError::InvalidVersion);
+                }
+            } else {
+                return Err(HeaderConversionError::InvalidVersion);
+            },
             length: header.length,
             encode: match header.config[0] {
                 0 => Encode::Utf16Le,
@@ -630,7 +643,7 @@ impl JointStage {
     pub fn read(mut self) -> (Vec<Joint>, Option<SoftBodyStage>) {
         (
             (0..self.0.read_i32()).map(|_| self.read_joint()).collect(),
-            if self.0.header.version > 2.0 {
+            if let crate::types::PMXVersion::V21 = self.0.header.version {
                 //this file contains softbody section
                 Some(SoftBodyStage(self.0))
             } else {

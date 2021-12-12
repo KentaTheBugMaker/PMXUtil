@@ -23,7 +23,7 @@ mod test {
     fn copy_test() {
         let path = std::env::var("PMX_FILE").unwrap();
         let to = "./to.pmx";
-        let mut writer = Writer::begin_writer(to, true).unwrap();
+        let mut writer = Writer::begin_writer(to, true);
         let copy_from = crate::reader::ModelInfoStage::open(path).unwrap();
         let (model_info, ns) = copy_from.read();
         let (vertices, ns) = ns.read();

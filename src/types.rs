@@ -9,13 +9,13 @@ pub type Vec4 = [f32; 4];
 
 /// represent text encoding but all texts in pmx file are converted to String so you don't need to care
 #[repr(u8)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum Encode {
     UTF8 = 0x01,
     Utf16Le = 0x00,
 }
 
-/// 仕様.txt 156~173
+/// PMX仕様.txt 156~173
 #[repr(packed)]
 pub struct HeaderRaw {
     pub magic: [u8; 4],
@@ -24,13 +24,17 @@ pub struct HeaderRaw {
     pub config: [u8; 8],
 }
 
-///these are pmx file header
-/// record magic number , version , text encoding ,and index size
-/// but internal use only so you don't need to care
+#[derive(Debug, Clone)]
+pub enum PMXVersion {
+    V20,
+    V21,
+}
+
+/// rustic wrapped header.
 #[derive(Debug, Clone)]
 pub struct Header {
     pub(crate) magic: String,
-    pub version: f32,
+    pub version: PMXVersion,
     pub(crate) length: u8,
     pub encode: Encode,
     pub additional_uv: u8,
@@ -42,8 +46,9 @@ pub struct Header {
     pub(crate) s_rigid_body_index: IndexKinds,
 }
 
-/// these are pmx embedded comments and names
-/// 仕様.txt 176~181
+/// Pmx embedded comments and names
+///
+/// refer PMX仕様.txt 176~181
 #[derive(Debug, Default, Eq, PartialEq, Clone)]
 pub struct ModelInfo {
     pub name: String,
@@ -52,7 +57,10 @@ pub struct ModelInfo {
     pub comment_en: String,
 }
 
-///仕様.txt 190~197
+/// Defining how to calculate skinning.
+///
+/// refer PMX仕様.txt 190~197
+///
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum VertexWeight {
     /// a bone with weight 1.0
@@ -154,7 +162,7 @@ pub enum VertexWeight {
     },
 }
 ///these value are must submitted to vertex shader
-/// 仕様.txt 184~252
+/// PMX仕様.txt 184~252
 ///
 /// you can pass by below codes
 /// ``` glsl
@@ -207,7 +215,8 @@ pub struct Face {
     pub vertices: [i32; 3],
 }
 /// texture file name list
-/// 仕様.txt 263~273
+///
+/// refer PMX仕様.txt 263~273
 /// relative path from pmx file located directory
 ///
 /// path separator may contains `/` or `\` so unix-like system will need  to convert it
@@ -216,8 +225,8 @@ pub struct Face {
 pub struct TextureList {
     pub textures: Vec<String>,
 }
-
-/// from PMX仕様.txt 295
+/// how to apply sphere mode texture
+/// refer PMX仕様.txt 295
 ///
 ///
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
@@ -235,8 +244,10 @@ pub struct SphereMode {
     pub index: i32,
     pub kind: SphereModeKind,
 }
-
-///from PMX仕様.txt 297 ~ 303
+/// represent which texture need to use for toon
+/// * Separate use texture in texture list
+/// * Common use embedded  texture in MMD or `PMXe`
+/// refer  PMX仕様.txt 297 ~ 303
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum ToonMode {
     Separate(i32),
@@ -244,7 +255,7 @@ pub enum ToonMode {
 }
 
 ///
-/// from PMX仕様.txt 276~310
+///
 ///
 /// as a sample you can pass Vulkan like glsl code.
 /// ``` glsl
@@ -261,6 +272,8 @@ pub enum ToonMode {
 /// layout (set = 1 ,binding = 1) sampler2D sphere_texture;
 /// layout (set = 1 ,binding = 2) sampler2D toon_texture;
 /// ```
+///
+///  refer PMX仕様.txt 276~310
 #[derive(Debug, Clone, PartialEq)]
 pub struct Material {
     pub name: String,
@@ -299,7 +312,7 @@ pub enum Target {
     Morph,
 }
 
-///from PMX仕様.txt 348 ~ 354
+///refer PMX仕様.txt 348 ~ 354
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum ConnectionDisplayMode {
     OtherBone(i32),
@@ -310,7 +323,11 @@ impl Default for ConnectionDisplayMode {
         Self::OtherBone(-1)
     }
 }
-///from PMX仕様.txt 313 ~ 395
+/// represent one bone
+///
+/// vb
+///
+/// refer PMX仕様.txt 313 ~ 395
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bone {
     pub name: String,
@@ -318,27 +335,27 @@ pub struct Bone {
     pub position: Vec3,
     pub parent: i32,
     pub deform_depth: i32,
-    /// 0x0001
+    /// bone flag 0x0001
     pub connection_display_mode: ConnectionDisplayMode,
-    /// 0x0002
+    /// bone flag0x0002
     pub rotatable_in_viewer: bool,
-    /// 0x0004
+    /// bone flag 0x0004
     pub translatable_in_viewer: bool,
-    /// 0x0008
+    /// bone flag 0x0008
     pub display_bone_in_viewer: bool,
-    /// 0x0010
+    /// bone flag 0x0010
     pub controllable_in_viewer: bool,
-    /// 0x0080 0x0100 0x0200
+    /// bone flag 0x0080 0x0100 0x0200
     pub inherits: BoneInherits,
-    /// 0x0400 from PMX仕様.txt 362 ~ 365
+    /// 0x0400 refer PMX仕様.txt 362 ~ 365
     pub fixed_axis: Option<Vec3>,
-    /// 0x0800 from PMX仕様.txt 367 ~ 371
+    /// 0x0800 refer PMX仕様.txt 367 ~ 371
     pub local_axis: Option<(Vec3, Vec3)>,
     /// 0x1000
     pub physics_after_deform: bool,
-    /// 0x2000 from PMX仕様.txt 373 ~ 376
+    /// 0x2000 refer PMX仕様.txt 373 ~ 376
     pub external_parent: Option<i32>,
-    /// 0x0020 from PMX仕様.txt 378 ~ 396
+    /// 0x0020 refer PMX仕様.txt 378 ~ 396
     pub ik_info: Option<BoneIKInfo>,
 }
 impl Bone {
@@ -419,11 +436,14 @@ impl Bone {
         flags
     }
 }
+
 #[derive(Debug, Copy, Clone, PartialEq, Default)]
 pub struct BoneInherits {
     pub inherit_local: bool,
     pub rotate_and_translate: RotateAndTranslateInherits,
 }
+
+/// represents how inherits rotate and translate
 #[derive(Debug, Copy, Clone, PartialEq)]
 pub enum RotateAndTranslateInherits {
     None,
@@ -436,16 +456,17 @@ impl Default for RotateAndTranslateInherits {
         Self::None
     }
 }
-/// from PMX仕様.txt 378 ~ 396
+
+/// refer PMX仕様.txt 378 ~ 396
 #[derive(Debug, Clone, PartialEq)]
 pub struct BoneIKInfo {
-    /// from PMX仕様.txt 381
+    /// refer PMX仕様.txt 381
     pub ik_target_bone_index: i32,
-    /// from PMX仕様.txt 382
+    /// refer PMX仕様.txt 382
     pub ik_iter_count: i32,
-    /// from PMX仕様.txt 383
+    /// refer PMX仕様.txt 383
     pub ik_limit_angle: f32,
-    /// from PMX仕様.txt 385 ~ 395
+    /// refer PMX仕様.txt 385 ~ 395
     pub ik_links: Vec<IKLink>,
 }
 
@@ -454,7 +475,7 @@ pub struct IKLink {
     pub ik_bone_index: i32,
     pub angle_limit: Option<(Vec3, Vec3)>,
 }
-///仕様.txt 399~459
+///PMX仕様.txt 399~459
 #[derive(Debug, Clone, PartialEq)]
 pub struct Morph {
     pub name: String,
@@ -462,6 +483,8 @@ pub struct Morph {
     pub control_panel: ControlPanel,
     pub morph_data: MorphKinds,
 }
+
+/// where to place morph.
 #[derive(Debug, Copy, Clone, PartialOrd, PartialEq, Ord, Eq)]
 pub enum ControlPanel {
     BottomLeft,
@@ -470,6 +493,7 @@ pub enum ControlPanel {
     BottomRight,
     System,
 }
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum MorphKinds {
     Vertex(Vec<VertexMorph>),
@@ -538,6 +562,7 @@ pub struct ImpulseMorph {
     pub velocity: Vec3,
     pub torque: Vec3,
 }
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Rigid {
     pub name: String,
@@ -796,6 +821,16 @@ impl TryFrom<u8> for IndexKinds {
     }
 }
 
+impl From<IndexKinds> for u8 {
+    fn from(kind: IndexKinds) -> Self {
+        match kind {
+            IndexKinds::I8 => 1,
+            IndexKinds::I16 => 2,
+            IndexKinds::I32 => 4,
+        }
+    }
+}
+
 impl TryFrom<u8> for VertexIndexKinds {
     type Error = ();
 
@@ -808,9 +843,19 @@ impl TryFrom<u8> for VertexIndexKinds {
         }
     }
 }
+impl From<VertexIndexKinds> for u8 {
+    fn from(kind: VertexIndexKinds) -> Self {
+        match kind {
+            VertexIndexKinds::U8 => 1,
+            VertexIndexKinds::U16 => 2,
+            VertexIndexKinds::I32 => 4,
+        }
+    }
+}
 #[derive(Debug)]
 pub enum HeaderConversionError {
     InvalidMagic,
     InvalidEncoding,
     InvalidIndex,
+    InvalidVersion,
 }
