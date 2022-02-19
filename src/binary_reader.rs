@@ -2,7 +2,6 @@ use crate::types::{Encode, HeaderRaw, IndexKinds, Vec2, Vec3, Vec4, VertexIndexK
 use std::convert::TryFrom;
 use std::fs::File;
 use std::io::{BufReader, Error, Read};
-use std::mem::transmute;
 use std::path::Path;
 
 macro_rules! read_bin {
@@ -10,17 +9,16 @@ macro_rules! read_bin {
         pub(crate) fn $F(&mut self) -> $T {
             let mut buf = [0_u8; std::mem::size_of::<$T>()];
             self.inner.read_exact(&mut buf).unwrap();
-            unsafe { transmute(buf) }
+            <$T>::from_le_bytes(buf)
         }
     };
 }
 
-pub(crate) struct BinaryReader {
-    inner: BufReader<File>,
+pub(crate) struct BinaryReader<R: Read> {
+    inner: BufReader<R>,
 }
-
-impl BinaryReader {
-    pub(crate) fn open<P: AsRef<Path>>(path: P) -> Result<BinaryReader, Error> {
+impl BinaryReader<File> {
+    pub(crate) fn open<P: AsRef<Path>>(path: P) -> Result<Self, Error> {
         let file = File::open(&path);
 
         match file {
@@ -29,6 +27,13 @@ impl BinaryReader {
                 Ok(BinaryReader { inner })
             }
             Err(err) => Err(err),
+        }
+    }
+}
+impl<R: Read> BinaryReader<R> {
+    pub(crate) fn from_reader(r: R) -> Self {
+        Self {
+            inner: BufReader::new(r),
         }
     }
     pub(crate) fn read_vec(&mut self, n: usize) -> Vec<u8> {
@@ -60,10 +65,35 @@ impl BinaryReader {
             IndexKinds::I32 => self.read_i32(),
         }
     }
-    read_bin!(read_vec4, Vec4);
-    read_bin!(read_vec3, Vec3);
-    read_bin!(read_vec2, Vec2);
-    read_bin!(read_raw_header, HeaderRaw);
+
+    pub(crate) fn read_vec4(&mut self) -> Vec4 {
+        [
+            self.read_f32(),
+            self.read_f32(),
+            self.read_f32(),
+            self.read_f32(),
+        ]
+    }
+    pub(crate) fn read_vec3(&mut self) -> Vec3 {
+        [self.read_f32(), self.read_f32(), self.read_f32()]
+    }
+    pub(crate) fn read_vec2(&mut self) -> Vec2 {
+        [self.read_f32(), self.read_f32()]
+    }
+    pub(crate) fn read_raw_header(&mut self) -> HeaderRaw {
+        let mut header = HeaderRaw {
+            magic: [0; 4],
+            version: 0.0,
+            length: 0,
+            config: [0; 8],
+        };
+        header.magic.iter_mut().for_each(|c| *c = self.read_u8());
+        header.version = self.read_f32();
+        header.length = self.read_u8();
+        header.config.iter_mut().for_each(|c| *c = self.read_u8());
+        header
+    }
+
     read_bin!(read_f32, f32);
     read_bin!(read_i32, i32);
     read_bin!(read_i16, i16);

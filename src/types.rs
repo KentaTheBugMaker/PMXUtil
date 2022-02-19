@@ -321,8 +321,6 @@ impl Default for ConnectionDisplayMode {
 }
 /// represent one bone
 ///
-/// vb
-///
 /// refer PMX仕様.txt 313 ~ 395
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Bone {

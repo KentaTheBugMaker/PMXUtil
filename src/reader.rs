@@ -6,7 +6,7 @@
 //! |[`ModelInfoStage`]|[`ModelInfo`]|[`VerticesStage`]|
 //! |[`VerticesStage`]|[`Vec<Vertex>`]|[`FacesStage`]|
 //! |[`FacesStage`]|[`Vec<Face>`]|[`TexturesStage`]|
-//! |[`TexturesStage`]|[`TextureList`]|[`MaterialsStage`]|
+//! |[`TexturesStage`]|[`Vec<String>`]|[`MaterialsStage`]|
 //! |[`MaterialsStage`]|[`Vec<Material>`]|[`BonesStage`]|
 //! |[`BonesStage`]|[`Vec<Bone>`]|[`MorphsStage`]|
 //! |[`MorphsStage`]|[`Vec<Morph>`]|[`FrameStage`]|
@@ -29,9 +29,11 @@ use crate::types::{
     ImpulseMorph, Joint, JointParameterRaw, JointType, Material, MaterialFlags, MaterialMorph,
     ModelInfo, Morph, MorphKinds, PMXVersion, Rigid, RigidCalcMethod, RigidForm,
     RotateAndTranslateInherits, SoftBody, SoftBodyAeroModel, SoftBodyAnchorRigid, SoftBodyForm,
-    SphereMode, SphereModeKind, TextureList, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
+    SphereMode, SphereModeKind, ToonMode, UVMorph, Vertex, VertexMorph, VertexWeight,
 };
 use std::convert::TryInto;
+use std::fs::File;
+use std::io::Read;
 use std::path::Path;
 
 fn transform_header_c2r(header: &HeaderRaw) -> Result<Header, HeaderConversionError> {
@@ -72,9 +74,9 @@ fn transform_header_c2r(header: &HeaderRaw) -> Result<Header, HeaderConversionEr
     }
 }
 
-pub struct ModelInfoStage(ReaderInner);
+pub struct ModelInfoStage<R: Read>(ReaderInner<R>);
 
-impl ModelInfoStage {
+impl ModelInfoStage<File> {
     /// the start of reader module.
     /// # None
     /// * invalid path given
@@ -90,7 +92,7 @@ impl ModelInfoStage {
     /// let path = std::env::var("PMX_FILE").unwrap();
     /// let model_info_loader = PMXUtil::reader::ModelInfoStage::open(path).unwrap();
     /// ```
-    pub fn open<P: AsRef<Path>>(path: P) -> Option<ModelInfoStage> {
+    pub fn open<P: AsRef<Path>>(path: P) -> Option<Self> {
         let mut inner = BinaryReader::open(path).ok()?;
         let header = inner.read_raw_header();
         let header_rs = transform_header_c2r(&header).ok()?;
@@ -99,12 +101,22 @@ impl ModelInfoStage {
             header: header_rs,
         }))
     }
+}
 
+impl<R: Read> ModelInfoStage<R> {
+    pub fn from_reader(reader: R) -> Option<Self> {
+        let mut inner = BinaryReader::from_reader(reader);
+        let header_rs = transform_header_c2r(&inner.read_raw_header()).ok()?;
+        Some(ModelInfoStage(ReaderInner {
+            inner,
+            header: header_rs,
+        }))
+    }
     pub fn get_header(&self) -> Header {
         self.0.header.clone()
     }
 
-    pub fn read(mut self) -> (ModelInfo, VerticesStage) {
+    pub fn read(mut self) -> (ModelInfo, VerticesStage<R>) {
         (
             ModelInfo {
                 name: self.0.read_text_buf(),
@@ -116,9 +128,11 @@ impl ModelInfoStage {
         )
     }
 }
-pub struct VerticesStage(ReaderInner);
-impl VerticesStage {
-    pub fn read(mut self) -> (Vec<Vertex>, FacesStage) {
+
+pub struct VerticesStage<R: Read>(ReaderInner<R>);
+
+impl<R: Read> VerticesStage<R> {
+    pub fn read(mut self) -> (Vec<Vertex>, FacesStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| self.read_pmx_vertex())
@@ -222,12 +236,12 @@ impl VerticesStage {
         ctx
     }
 }
-pub struct FacesStage(ReaderInner);
-impl FacesStage {
+pub struct FacesStage<R: Read>(ReaderInner<R>);
+impl<R: Read> FacesStage<R> {
     /// Read the faces
     ///
     /// read [Face doc](crate::types::Face)
-    pub fn read(mut self) -> (Vec<Face>, TexturesStage) {
+    pub fn read(mut self) -> (Vec<Face>, TexturesStage<R>) {
         (
             (0..(self.0.read_i32() / 3))
                 .map(|_| Face {
@@ -243,29 +257,27 @@ impl FacesStage {
     }
 }
 
-pub struct TexturesStage(ReaderInner);
-impl TexturesStage {
+pub struct TexturesStage<R: Read>(ReaderInner<R>);
+impl<R: Read> TexturesStage<R> {
     /// Read relative texture path from current reading file
     ///
     /// # Note
-    /// for Unix like -system user you need to convert \ to /
-    pub fn read(mut self) -> (TextureList, MaterialsStage) {
+    /// for Unix like system user you need to convert \ to /
+    pub fn read(mut self) -> (Vec<String>, MaterialsStage<R>) {
         (
-            TextureList {
-                textures: (0..self.0.read_i32())
-                    .map(|_| self.0.read_text_buf())
-                    .collect(),
-            },
+            (0..self.0.read_i32())
+                .map(|_| self.0.read_text_buf())
+                .collect(),
             MaterialsStage(self.0),
         )
     }
 }
-pub struct MaterialsStage(ReaderInner);
-impl MaterialsStage {
+pub struct MaterialsStage<R: Read>(ReaderInner<R>);
+impl<R: Read> MaterialsStage<R> {
     ///Read material's information contains name ambient diffuse specular etc parameters.
     ///
     /// please read [Material](crate::types::Material) doc
-    pub fn read(mut self) -> (Vec<Material>, BonesStage) {
+    pub fn read(mut self) -> (Vec<Material>, BonesStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| self.read_pmx_material())
@@ -319,11 +331,11 @@ impl MaterialsStage {
         }
     }
 }
-pub struct BonesStage(ReaderInner);
-impl BonesStage {
+pub struct BonesStage<R: Read>(ReaderInner<R>);
+impl<R: Read> BonesStage<R> {
     /// read bone's information parent child IK etc.
     /// Exact model pose you should process this parameter
-    pub fn read(mut self) -> (Vec<Bone>, MorphsStage) {
+    pub fn read(mut self) -> (Vec<Bone>, MorphsStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| self.read_pmx_bone())
@@ -401,9 +413,9 @@ impl BonesStage {
     }
 }
 
-pub struct MorphsStage(ReaderInner);
-impl MorphsStage {
-    pub fn read(mut self) -> (Vec<Morph>, FrameStage) {
+pub struct MorphsStage<R: Read>(ReaderInner<R>);
+impl<R: Read> MorphsStage<R> {
+    pub fn read(mut self) -> (Vec<Morph>, FrameStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| self.read_pmx_morph())
@@ -542,13 +554,13 @@ impl MorphsStage {
         }
     }
 }
-pub struct FrameStage(ReaderInner);
+pub struct FrameStage<R: Read>(ReaderInner<R>);
 
-impl FrameStage {
+impl<R: Read> FrameStage<R> {
     /// read `MMD` controller
     /// # Panics
     /// * if contains invalid target
-    pub fn read(mut self) -> (Vec<Frame>, RigidStage) {
+    pub fn read(mut self) -> (Vec<Frame>, RigidStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| Frame {
@@ -573,9 +585,9 @@ impl FrameStage {
         )
     }
 }
-pub struct RigidStage(ReaderInner);
-impl RigidStage {
-    pub fn read(mut self) -> (Vec<Rigid>, JointStage) {
+pub struct RigidStage<R: Read>(ReaderInner<R>);
+impl<R: Read> RigidStage<R> {
+    pub fn read(mut self) -> (Vec<Rigid>, JointStage<R>) {
         (
             (0..self.0.read_i32())
                 .map(|_| {
@@ -632,10 +644,10 @@ impl RigidStage {
     }
 }
 
-pub struct JointStage(ReaderInner);
+pub struct JointStage<R: Read>(ReaderInner<R>);
 
-impl JointStage {
-    pub fn read(mut self) -> (Vec<Joint>, Option<SoftBodyStage>) {
+impl<R: Read> JointStage<R> {
+    pub fn read(mut self) -> (Vec<Joint>, Option<SoftBodyStage<R>>) {
         (
             (0..self.0.read_i32()).map(|_| self.read_joint()).collect(),
             if let crate::types::PMXVersion::V21 = self.0.header.version {
@@ -752,9 +764,9 @@ fn translate_joint(raw_parameter: &JointParameterRaw) -> JointType {
         }
     }
 }
-pub struct SoftBodyStage(ReaderInner);
+pub struct SoftBodyStage<R: Read>(ReaderInner<R>);
 
-impl SoftBodyStage {
+impl<R: Read> SoftBodyStage<R> {
     pub fn read(mut self) -> Vec<SoftBody> {
         (0..self.0.read_i32())
             .map(|_| self.read_soft_body())
@@ -837,12 +849,12 @@ impl SoftBodyStage {
         }
     }
 }
-struct ReaderInner {
-    inner: BinaryReader,
+struct ReaderInner<R: Read> {
+    inner: BinaryReader<R>,
     header: Header,
 }
 
-impl ReaderInner {
+impl<R: Read> ReaderInner<R> {
     pub fn read_vertex_index(&mut self) -> i32 {
         self.inner.read_vertex_index(self.header.s_vertex_index)
     }

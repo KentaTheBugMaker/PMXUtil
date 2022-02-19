@@ -2,7 +2,6 @@ use std::fs::File;
 use std::io::BufWriter;
 use std::io::Error;
 use std::io::Write;
-use std::mem::transmute;
 use std::path::Path;
 
 use crate::types::{
@@ -17,8 +16,8 @@ use std::convert::TryFrom;
 
 /// This is internal use only struct
 /// Do not use this struct
-pub(crate) struct BinaryWriter {
-    pub(crate) inner: BufWriter<File>,
+pub(crate) struct BinaryWriter<W: Write> {
+    pub(crate) inner: BufWriter<W>,
     pub(crate) header: Header,
 }
 
@@ -26,15 +25,24 @@ macro_rules! write_bin {
     ($F:ident,$T:ty) => {
         ///Macro implemented member for internal use
         pub(crate) fn $F(&mut self, value: $T) {
-            let buf: [u8; std::mem::size_of::<$T>()] = unsafe { transmute(value) };
+            let buf = value.to_le_bytes();
             self.inner.write_all(&buf).unwrap();
         }
     };
 }
-
-impl BinaryWriter {
-    pub fn create<P: AsRef<Path>>(path: P, header: Header) -> Result<BinaryWriter, Error> {
-        //   let file = File::open(&path);
+macro_rules! write_bin_array {
+    ($F:ident,$T:ty) => {
+        ///Macro implemented member for internal use
+        pub(crate) fn $F(&mut self, value: $T) {
+            for element in value {
+                let buf = element.to_le_bytes();
+                self.inner.write_all(&buf).unwrap();
+            }
+        }
+    };
+}
+impl BinaryWriter<File> {
+    pub(crate) fn create<P: AsRef<Path>>(path: P, header: Header) -> Result<Self, Error> {
         let file = File::create(&path);
 
         match file {
@@ -43,6 +51,14 @@ impl BinaryWriter {
                 Ok(BinaryWriter { inner, header })
             }
             Err(err) => Err(err),
+        }
+    }
+}
+impl<W: Write> BinaryWriter<W> {
+    pub(crate) fn from_writer(writer: W, header: Header) -> Self {
+        Self {
+            inner: BufWriter::new(writer),
+            header,
         }
     }
     pub(crate) fn write_header(&mut self) {
@@ -710,9 +726,9 @@ impl BinaryWriter {
             .iter()
             .for_each(|vertex_index| self.write_vertex_index(*vertex_index));
     }
-    write_bin!(write_vec4, Vec4);
-    write_bin!(write_vec3, Vec3);
-    write_bin!(write_vec2, Vec2);
+    write_bin_array!(write_vec4, Vec4);
+    write_bin_array!(write_vec3, Vec3);
+    write_bin_array!(write_vec2, Vec2);
     write_bin!(write_f32, f32);
     write_bin!(write_i32, i32);
     write_bin!(write_i16, i16);

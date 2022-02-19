@@ -1,6 +1,7 @@
 //! PMX writing module.
 use std::convert::TryFrom;
 
+use crate::binary_writer::BinaryWriter;
 use crate::types::{
     Bone, Encode, Face, Frame, Header, IndexKinds, Joint, JointType, Material, ModelInfo, Morph,
     MorphKinds, PMXVersion, Rigid, SoftBody, Vertex, VertexIndexKinds, VertexWeight,
@@ -18,7 +19,7 @@ use std::path::Path;
 /// ```rust
 /// use PMXUtil::types::ModelInfo;
 /// let vertices = vec![];
-/// let mut writer=PMXUtil::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true);
+/// let mut writer=PMXUtil::writer::Writer::begin_writer(true);
 /// writer.set_model_info(&ModelInfo{
 ///     name:"PMXモデル名".to_owned(),
 ///     name_en:"A PMX Model Name".to_owned(),
@@ -27,13 +28,9 @@ use std::path::Path;
 /// });
 /// writer.set_additional_uv(4);// vertices contains 4 additional uv
 /// writer.add_vertices(&vertices);
-/// writer.write();
+/// writer.write_to_path("./path/to/pmx/file.pmx");
 /// ```
-pub struct Writer<P>
-where
-    P: AsRef<Path>,
-{
-    path: P,
+pub struct Writer {
     encode_to_utf_16: bool,
     model_info: Option<ModelInfo>,
     vertices: Vec<Vertex>,
@@ -49,14 +46,10 @@ where
     soft_bodies: Vec<SoftBody>,
 }
 
-impl<P> Writer<P>
-where
-    P: AsRef<Path>,
-{
+impl Writer {
     ///
     /// # Arguments
     ///
-    /// * `path`: where to write
     /// * `encode_to_utf16`: if true text will encoded in UTF-16 Little Endian
     ///     if you don't have any special reason turn on it to keep MMD compatibility.
     ///
@@ -64,11 +57,10 @@ where
     /// # Examples
     ///
     /// ```
-    /// let mut writer=PMXUtil::writer::Writer::begin_writer("./path_to_pmx_file.pmx",true);
+    /// let mut writer=PMXUtil::writer::Writer::begin_writer(true);
     /// ```
-    pub fn begin_writer(path: P, encode_to_utf_16: bool) -> Writer<P> {
+    pub fn begin_writer(encode_to_utf_16: bool) -> Self {
         Self {
-            path,
             encode_to_utf_16,
             model_info: None,
             vertices: vec![],
@@ -149,15 +141,7 @@ where
         self.soft_bodies.extend_from_slice(soft_bodies);
     }
 
-    /// write all date and drop it
-    ///
-    /// # Panics
-    ///
-    /// # Errors
-    /// * `WritePMXErrors::TooBig` if any buffer elements exceeds `i32::MAX`
-    /// * `WritePMXErrors::NoModelInfo` if model info is not set.
-    /// * `WritePMXErrors::IoError` if failed to write pmx.
-    pub fn write(self) -> Result<(), WritePMXErrors> {
+    fn calculate_header(&self) -> (Header, bool) {
         let vertex = self
             .vertices
             .iter()
@@ -182,9 +166,7 @@ where
             vertex.is_some() | morph.is_some() | joint.is_some() | !self.soft_bodies.is_empty();
 
         // calculate all parameters and create actual writer.
-
-        let mut writer = crate::binary_writer::BinaryWriter::create(
-            self.path,
+        (
             Header {
                 magic: "PMX ".to_owned(),
                 version: if ext_2_1 {
@@ -206,9 +188,16 @@ where
                 s_morph_index: optimal_data_type(self.morphs.len()),
                 s_rigid_body_index: optimal_data_type(self.rigid_bodies.len()),
             },
-        )?;
+            ext_2_1,
+        )
+    }
 
-        let model_info = if let Some(mi) = self.model_info {
+    fn burn_by_writer<W: Write>(
+        &self,
+        mut writer: BinaryWriter<W>,
+        ext_2_1: bool,
+    ) -> Result<(), WritePMXErrors> {
+        let model_info = if let Some(mi) = &self.model_info {
             mi
         } else {
             return Err(WritePMXErrors::NoModelInfo);
@@ -270,6 +259,33 @@ where
         }
         writer.inner.flush().map_err(WritePMXErrors::IoError)
     }
+
+    /// write all data to file and drop it
+    ///
+    /// # Panics
+    ///
+    /// # Errors
+    /// * `WritePMXErrors::TooBig` if any buffer elements exceeds `i32::MAX`
+    /// * `WritePMXErrors::NoModelInfo` if model info is not set.
+    /// * `WritePMXErrors::IoError` if failed to write pmx.
+    pub fn write_to_path<P: AsRef<Path>>(self, path: P) -> Result<(), WritePMXErrors> {
+        let (header, ext_2_1) = self.calculate_header();
+        let writer = crate::binary_writer::BinaryWriter::create(path, header)?;
+        self.burn_by_writer(writer, ext_2_1)
+    }
+
+    /// write all data to Stream and drop it
+    ///
+    /// # Panics
+    ///
+    /// # Errors
+    /// * `WritePMXErrors::TooBig` if any buffer elements exceeds `i32::MAX`
+    /// * `WritePMXErrors::NoModelInfo` if model info is not set.
+    pub fn write<W: Write>(self, writer: W) -> Result<(), WritePMXErrors> {
+        let (header, ext_2_1) = self.calculate_header();
+        let writer = crate::binary_writer::BinaryWriter::from_writer(writer, header);
+        self.burn_by_writer(writer, ext_2_1)
+    }
 }
 
 fn optimal_data_type_vertex(len: usize) -> VertexIndexKinds {
@@ -292,6 +308,7 @@ fn optimal_data_type(len: usize) -> IndexKinds {
     }
 }
 
+#[derive(Debug)]
 pub enum WritePMXErrors {
     NoModelInfo,
     IoError(std::io::Error),
